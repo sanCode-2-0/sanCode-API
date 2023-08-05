@@ -201,8 +201,6 @@ app.get("/staff-data", (req, res) => {
         });
 
         let filteredData = [];
-        const startOfToday = moment().startOf('day');
-        const endOfToday = moment().endOf('day');
 
         for (let i = 0; i < data.length; i++) {
             const dateToBeChecked = moment(data[i].timestamp, "YYYY-MM-DD HH:mm:ss");
