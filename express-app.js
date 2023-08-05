@@ -60,7 +60,7 @@ app.post("/student-full-entry", async (req, res) => {
             if (error) {
                 res.status(500).send("Error updating the record.");
             } else {
-                res.send("Record updated successfully.");
+                res.send(`Record updated for ${studentAdmNo} successfully.`);
             }
         }
     );
