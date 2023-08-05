@@ -35,30 +35,6 @@ const db = new sqlite3.Database(`database/${databaseName}`, (err) => {
     }
 });
 
-// app.post("/creatable-data", (req, res) => {
-//     let { selectedData } = req.body;
-//     selectedData = JSON.stringify(selectedData);
-
-//     db.run(`INSERT INTO exampleList(complains) VALUES (?)`, [selectedData], (error) => {
-//         if (error) {
-//             console.error(error.message);
-//         } else {
-//             console.log("INSERTED");
-//         }
-//     });
-
-// })
-
-// app.get("/creatable-data-get", (req, res) => {
-//     db.all(`SELECT complains FROM exampleList`, (error, rows) => {
-//         if (error) {
-//             console.error(error.message)
-//         }
-
-//         res.json(rows)
-//     })
-// })
-
 //Endpoint to validate that student exists in the database
 app.get("/students/:admissionNumber", async (req, res) => {
     const admissionNumber = req.params.admissionNumber;
