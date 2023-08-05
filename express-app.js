@@ -52,7 +52,7 @@ app.get("/students/:admissionNumber", async (req, res) => {
 app.post("/student-full-entry", async (req, res) => {
     const { studentAdmNo, tempReading, complain, ailment, medication } = req.body;
 
-    // Update record where student admno is studentAdmNo
+    // Update record where student admno matches studentAdmNo
     db.run(
         `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE admNo=?`,
         [tempReading, complain, ailment, medication, timestamp, studentAdmNo[0]],
