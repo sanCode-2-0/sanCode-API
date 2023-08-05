@@ -70,7 +70,7 @@ app.post("/student-full-entry", async (req, res) => {
 app.post("/student-quick-update", async (req, res) => {
     const { studentAdmNo, tempReading } = req.body;
 
-    // Update record where student admission number is studentAdmNo
+    // Update record where student admission number matches studentAdmNo
     db.run(
         `UPDATE ${studentTableName} SET tempReading=?WHERE admNo=?`,
         [tempReading, studentAdmNo],
@@ -78,7 +78,7 @@ app.post("/student-quick-update", async (req, res) => {
             if (error) {
                 res.status(500).send("Error updating the record.");
             } else {
-                res.send("Record updated successfully.");
+                res.send(`Record updated for ${studentAdmNo} successfully.`);
             }
         }
     );
@@ -86,10 +86,9 @@ app.post("/student-quick-update", async (req, res) => {
 
 //Endpoint to validate that staff exists in the database
 app.get("/staff/:idNo", async (req, res) => {
-    let idNo;
-    idNo = req.params.idNo;
+    let idNo = req.params.idNo;
 
-    // Select table
+    // Select all from staff table
     db.all(`SELECT * FROM ${staffTableName} WHERE idNo=${idNo}`, [], (err, rows) => {
         if (err) {
             console.error(err.message);
@@ -101,11 +100,11 @@ app.get("/staff/:idNo", async (req, res) => {
 app.post("/staff-create-entry", async (req, res) => {
     const { idNo, fName, sName } = req.body;
 
-    //Insert the record.
+    //Insert a new record for the staff members
     db.run(
         `INSERT INTO ${staffTableName} (idNo, fName, sName) VALUES(?,?,?)`, [idNo, fName, sName], (error) => {
             if (error) {
-                res.status(500).send("Error creating the entry")
+                res.status(500).send(`Error creating the entry for ${fName}`)
             } else {
                 res.status(200).send({
                     status: 200,
