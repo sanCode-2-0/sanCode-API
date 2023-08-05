@@ -121,7 +121,7 @@ app.post("/staff-create-entry", async (req, res) => {
 app.post("/staff-full-entry", async (req, res) => {
     const { idNo, tempReading, complain, ailment, medication } = req.body;
 
-    // Update record where staff Kenyan id No is idNo
+    // Update record where staff Kenyan id No matches idNo
     db.run(
         `UPDATE ${staffTableName} SET tempReading=?, complain=?, ailment=?, medication=? WHERE idNo=?`,
         [tempReading, complain, ailment, medication, idNo],
@@ -129,7 +129,7 @@ app.post("/staff-full-entry", async (req, res) => {
             if (error) {
                 res.status(500).send("Error updating the record.");
             } else {
-                res.send("Record updated successfully.");
+                res.send(`Record updated for ${idNo} successfully.`);
             }
         }
     );
@@ -139,7 +139,7 @@ app.post("/staff-full-entry", async (req, res) => {
 app.post("/staff-quick-update", async (req, res) => {
     const { idNo, tempReading } = req.body;
 
-    // Update record where staff idNo is idNo
+    // Update record where staff idNo matches idNo
     db.run(
         `UPDATE ${staffTableName} SET tempReading=? WHERE admNo=?`,
         [tempReading, idNo],
@@ -147,7 +147,7 @@ app.post("/staff-quick-update", async (req, res) => {
             if (error) {
                 res.status(500).send("Error updating the record.");
             } else {
-                res.send("Record updated successfully.");
+                res.send(`Record updated for ${idNo} successfully.`);
             }
         }
     );
@@ -171,8 +171,6 @@ app.get("/student-data", (req, res) => {
         });
 
         let filteredData = [];
-        const startOfToday = moment().startOf('day');
-        const endOfToday = moment().endOf('day');
 
         for (let i = 0; i < data.length; i++) {
             const dateToBeChecked = moment(data[i].timestamp, "YYYY-MM-DD HH:mm:ss");
