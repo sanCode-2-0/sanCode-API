@@ -17,7 +17,7 @@ app.use(bodyParser.json());
 
 //Database variables
 const databaseName = "san-code.db"
-const tableName = "sanCodeStudent" //Student records table
+const studentTableName = "sanCodeStudent" //Student records table
 const staffTableName = "sanCodeStaff" //Staff records table
 const reportTableName = "sanCodeReport" //Report table
 // Timestamp
@@ -40,7 +40,7 @@ app.get("/students/:admissionNumber", async (req, res) => {
     const admissionNumber = req.params.admissionNumber;
 
     // Select table
-    db.all(`SELECT * FROM ${tableName} WHERE admNo=${admissionNumber}`, [], (err, rows) => {
+    db.all(`SELECT * FROM ${studentTableName} WHERE admNo=${admissionNumber}`, [], (err, rows) => {
         if (err) {
             console.error(err.message);
         }
@@ -54,7 +54,7 @@ app.post("/student-full-entry", async (req, res) => {
 
     // Update record where student admno is studentAdmNo
     db.run(
-        `UPDATE ${tableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE admNo=?`,
+        `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE admNo=?`,
         [tempReading, complain, ailment, medication, timestamp, studentAdmNo[0]],
         (error) => {
             if (error) {
@@ -72,7 +72,7 @@ app.post("/student-quick-update", async (req, res) => {
 
     // Update record where student admission number is studentAdmNo
     db.run(
-        `UPDATE ${tableName} SET tempReading=?WHERE admNo=?`,
+        `UPDATE ${studentTableName} SET tempReading=?WHERE admNo=?`,
         [tempReading, studentAdmNo],
         (error) => {
             if (error) {
@@ -156,7 +156,7 @@ app.post("/staff-quick-update", async (req, res) => {
 
 // Endpoint to fetch all student data for purposes of the nurse filtering
 app.get("/student-data", (req, res) => {
-    db.all(`SELECT * FROM ${tableName} ORDER BY timestamp DESC`, [], (err, rows) => {
+    db.all(`SELECT * FROM ${studentTableName} ORDER BY timestamp DESC`, [], (err, rows) => {
         if (err) {
             console.error(err.message);
             res.status(500).send("Internal Server Error");
@@ -228,7 +228,7 @@ app.get("/update-report", async (req, res) => {
         FROM ${staffTableName}
         UNION
         SELECT recordID, admNo, fName, sName, class, tempReading, complain, ailment, medication, timestamp
-        FROM ${tableName}`, [], (err, rows) => {
+        FROM ${studentTableName}`, [], (err, rows) => {
                 if (err) {
                     console.error(err.message);
                     reject(err);
@@ -347,7 +347,7 @@ app.get("/generate-excel", (req, res) => {
     FROM ${staffTableName}
     UNION
     SELECT recordID, admNo, fName, sName, tName, fourthName, class, tempReading, complain, ailment, medication, timestamp
-    FROM ${tableName}`, [], (err, rows) => {
+    FROM ${studentTableName}`, [], (err, rows) => {
 
 
         if (err) {
@@ -413,8 +413,8 @@ app.post("/new-students", async (req, res) => {
     //We'll insert this data into the database
 
     //Insert prepared statement
-    const insertQuery = `INSERT INTO ${tableName} (fName, sName, admNo, class) VALUES(?,?,?,?)`;
-    const selectQuery = `SELECT COUNT(*) as count from ${tableName} WHERE admNo=?`;
+    const insertQuery = `INSERT INTO ${studentTableName} (fName, sName, admNo, class) VALUES(?,?,?,?)`;
+    const selectQuery = `SELECT COUNT(*) as count from ${studentTableName} WHERE admNo=?`;
 
     arrayWithStudentDetails.forEach((eachItem) => {
         // Check if the record exists
