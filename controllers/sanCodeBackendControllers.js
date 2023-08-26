@@ -17,9 +17,6 @@ app.use(_json());
 
 //Database variables
 
-// const studentTableName = "sanCodeStudent"; //Student records table
-// const staffTableName = "sanCodeStaff"; //Staff records table
-// const reportTableName = "sanCodeReport"; //Report table
 // Timestamp
 const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 // Start of today date
