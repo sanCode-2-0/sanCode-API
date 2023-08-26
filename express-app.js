@@ -2,6 +2,8 @@ import express, { json } from "express";
 import cors from "cors";
 import fs from "fs";
 import pkg from "body-parser";
+import sanCodeBackendRoutes from "./routes/sanCodeBackendRoutes.js";
+import { KEYS } from "./config/keys.js";
 const app = express();
 const { json: _json } = pkg;
 // Array holding ailments checked
@@ -9,8 +11,6 @@ app.use(cors());
 app.use(json());
 app.use(_json());
 
-import sanCodeBackendRoutes from "./routes/sanCodeBackendRoutes.js";
-import { KEYS } from "./config/keys.js";
 app.use("/", sanCodeBackendRoutes);
 
 // Start the server
