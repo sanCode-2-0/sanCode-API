@@ -4,6 +4,7 @@
   "description": "",
   "main": "express-app.js",
   "build": "pkg express-app.js -o express-app",
+  "type":"module",
   "bin": {
     "express-app": "express-app.js"
   },
