@@ -22,6 +22,7 @@ const startOfToday = moment().startOf("day");
 //End of today date
 const endOfToday = moment().endOf("day");
 import { db, staffTableName, studentTableName } from "../config/database.js";
+import { KEYS } from "../config/keys.js";
 
 //Return name of the API if requested
 export const defaultResponse = async (req, res) => {
@@ -411,11 +412,11 @@ export const generateExcel = (req, res) => {
       fileName = fileName.replace(/ /g, "_").replace(/,/g, "");
       const workbook = new excelJS.Workbook(); // Create a new workbook
       const worksheet = workbook.addWorksheet(fileName);
-      const path = "./workbooks"; //Path ( relative to the root folder ) to location where workbook will be saved.
+      const path = `${KEYS.HOME}/Desktop/sanCode-Excel-Summaries`; //Path ( relative to the root folder ) to location where workbook will be saved.
       //Data Column names ( key should match column name in db )
       worksheet.columns = [
         { header: "Record ID", key: "recordID", width: 15 },
-        { header: "Admission Number", key: "regNo", width: 15 },
+        { header: "Admission / ID Number", key: "regNo", width: 15 },
         { header: "First Name", key: "fName", width: 15 },
         { header: "Second Name", key: "sName", width: 15 },
         { header: "Third Name", key: "tName", width: 15 },
