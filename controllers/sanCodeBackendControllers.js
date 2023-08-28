@@ -18,7 +18,7 @@ app.use(_json());
 // Timestamp
 const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 // Start of today date
-const startOfToday = moment().startOf("day");
+export const startOfToday = moment().startOf("day");
 //End of today date
 const endOfToday = moment().endOf("day");
 import { db, staffTableName, studentTableName } from "../config/database.js";

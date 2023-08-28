@@ -4,12 +4,30 @@ import fs from "fs";
 import pkg from "body-parser";
 import sanCodeBackendRoutes from "./routes/sanCodeBackendRoutes.js";
 import { KEYS } from "./config/keys.js";
+import path from "path";
+import morgan from "morgan";
+import moment from "moment-timezone";
 const app = express();
 const { json: _json } = pkg;
 // Array holding ailments checked
 app.use(cors());
 app.use(json());
 app.use(_json());
+
+//Logging server activities
+let startOfToday = moment()
+  .format("dddd, Do MMMM YYYY")
+  .replace(/ /g, "_")
+  .replace(/,/g, "");
+// create a write stream (in append mode)
+var accessLogStream = fs.createWriteStream(
+  path.join(KEYS.LOG_DIR, `${startOfToday}.log`),
+  {
+    flags: "a",
+  }
+);
+// setup the logger
+app.use(morgan("combined", { stream: accessLogStream }));
 
 app.use("/", sanCodeBackendRoutes);
 
@@ -27,8 +45,13 @@ app.listen(KEYS.PORT, () => {
   fs.access(dir, fs.constants.W_OK, (err) => {
     if (err) {
       console.error("No write permission");
-    } else {
-      console.log("You have write permission");
+    }
+  });
+
+  //Create today's log file if doesn't exist
+  fs.writeFile(`./logs/${startOfToday}.log`, "", (err) => {
+    if (err) {
+      console.log(err);
     }
   });
 
