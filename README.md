@@ -115,3 +115,15 @@
 ```http
   GET /report
 ```
+
+New Features-> Restarts after crashing.
+-> File hiding to prevent students from tampering with files.
+-> Ability to generate Excel summary ( which will be stored on the desktop )
+
+            ( Already available on online version of application )
+
+Future Features -> Editing Individual Student Records. ( Case of Transfers )
+-> Deleting records in report.
+-> Caching three months worth of records.
+-> Sharing of files.
+-> Printable report.
