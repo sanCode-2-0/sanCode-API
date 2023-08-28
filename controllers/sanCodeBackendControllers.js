@@ -1,12 +1,10 @@
 import express, { json } from "express";
 const app = express();
 import cors from "cors";
-// With xlsx, convert JSON data into an EXCEL spreadsheet
-import { utils, writeFile } from "xlsx";
+import excelJS from "exceljs";
 import moment from "moment-timezone";
 import pkg from "body-parser";
 const { json: _json } = pkg;
-// Array holding ailments checked
 import loadData from "../assets/ailmentsChecked.js";
 app.use(cors());
 app.use(json());
@@ -366,13 +364,13 @@ export const updateReport = async (req, res) => {
 export const generateExcel = (req, res) => {
   // Select all records from both the students table and staff table
   db.all(
-    `SELECT staffRecordID AS recordID, idNo AS admNo, fName, sName, NULL AS tName, NULL AS fourthName, NULL AS class, tempReading, complain, ailment, medication, timestamp
+    `SELECT staffRecordID AS recordID, idNo AS regNo, fName, sName, NULL AS tName, NULL AS fourthName, NULL AS class, tempReading, complain, ailment, medication, timestamp
     FROM ${staffTableName}
     UNION
-    SELECT recordID, admNo, fName, sName, tName, fourthName, class, tempReading, complain, ailment, medication, timestamp
+    SELECT recordID, admNo AS regNo, fName, sName, tName, fourthName, class, tempReading, complain, ailment, medication, timestamp
     FROM ${studentTableName}`,
     [],
-    (err, rows) => {
+    async (err, rows) => {
       if (err) {
         console.error(err.message);
       }
@@ -408,55 +406,57 @@ export const generateExcel = (req, res) => {
         }
       }
 
-      // Use xlsx module to convert the filteredData array into an excel document
-      const worksheet = utils.json_to_sheet(filteredData);
-      const workbook = utils.book_new(worksheet);
-
-      // Change the worksheet headers to names that kind of look good.
-      utils.sheet_add_aoa(
-        worksheet,
-        [
-          [
-            "ID",
-            "Admission Number",
-            "First Name",
-            "Second Name",
-            "Third Name",
-            "Fourth Name",
-            "Class",
-            "Temperature Reading",
-            "Complains",
-            "Ailment",
-            "Medication",
-            "TimeStamp",
-          ],
-        ],
-        {
-          origin: "A1",
-          font: { bold: true },
-          border: {
-            top: { style: "thin", color: "000000" },
-            bottom: { style: "thin", color: "000000" },
-            left: { style: "thin", color: "000000" },
-            right: { style: "thin", color: "000000" }, // Set right border style and color
-          },
-        }
-      );
-      // Change columns width based on the width of the characters
-      worksheet["!cols"] = [{ wch: 10 }];
-      // Append the worksheet to the workbook
-      // Set today's date as the title of the worksheet
-      utils.book_append_sheet(
-        workbook,
-        worksheet,
-        moment().format("dddd, Do MMMM YYYY")
-      );
-
-      // Export it into the 'workbooks' folder
+      //Logic to insert `filteredData` into an excel file
       let fileName = moment().format("dddd, Do MMMM YYYY");
       fileName = fileName.replace(/ /g, "_").replace(/,/g, "");
-      writeFile(workbook, `workbooks/${fileName}.xlsx`, { compression: true });
+      const workbook = new excelJS.Workbook(); // Create a new workbook
+      const worksheet = workbook.addWorksheet(fileName);
+      const path = "./workbooks"; //Path ( relative to the root folder ) to location where workbook will be saved.
+      //Data Column names ( key should match column name in db )
+      worksheet.columns = [
+        { header: "Record ID", key: "recordID", width: 15 },
+        { header: "Admission Number", key: "regNo", width: 15 },
+        { header: "First Name", key: "fName", width: 15 },
+        { header: "Second Name", key: "sName", width: 15 },
+        { header: "Third Name", key: "tName", width: 15 },
+        { header: "Fourth Name", key: "fourthName", width: 15 },
+        { header: "Student's Class", key: "class", width: 15 },
+        { header: "Complain", key: "complain", width: 15 },
+        { header: "Temperature Reading", key: "tempReading", width: 15 },
+        { header: "Medication", key: "medication", width: 15 },
+        { header: "Time Stamp", key: "timestamp", width: 15 },
+      ];
+      //Loop through data to add data into worksheet
+      let counter = 1;
+      filteredData.forEach((eachRecord) => {
+        eachRecord.recordID = counter;
+        worksheet.addRow(eachRecord);
+        counter++;
+      });
 
+      //Bold the header row ( 1st row ) bold
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.alignment = { textRotation: 45 };
+      });
+
+      //A try catch block to generate excel file
+      try {
+        const excelData = await workbook.xlsx
+          .writeFile(`${path}/${fileName}.xlsx`)
+          .then(() => {
+            res.send({
+              status: "Success",
+              message: "Excel file has been generated",
+              path: `${path}/${fileName}.xlsx`,
+            });
+          });
+      } catch (error) {
+        res.send({
+          status: "Error",
+          message: "Something went wrong...",
+        });
+      }
       res.json(filteredData);
     }
   );
