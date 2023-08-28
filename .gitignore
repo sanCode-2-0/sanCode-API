@@ -130,4 +130,4 @@ dist
 .pnp.*
 
 # sqlite databases
-*.db
+database/san-code.db
