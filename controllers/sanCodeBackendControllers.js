@@ -21,7 +21,12 @@ const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 export const startOfToday = moment().startOf("day");
 //End of today date
 const endOfToday = moment().endOf("day");
-import { db, staffTableName, studentTableName } from "../config/database.js";
+import {
+  db,
+  staffTableName,
+  studentTableName,
+  reportTableName,
+} from "../config/database.js";
 import { KEYS } from "../config/keys.js";
 
 //Return name of the API if requested
@@ -412,7 +417,7 @@ export const generateExcel = (req, res) => {
       fileName = fileName.replace(/ /g, "_").replace(/,/g, "");
       const workbook = new excelJS.Workbook(); // Create a new workbook
       const worksheet = workbook.addWorksheet(fileName);
-      const path = `${KEYS.HOME}/Desktop/sanCode-Excel-Summaries`; //Path ( relative to the root folder ) to location where workbook will be saved.
+      const path = `${req.body.homeDirectory}/Desktop/sanCode-Excel-Summaries`; //Path ( relative to the root folder ) to location where workbook will be saved.
       //Data Column names ( key should match column name in db )
       worksheet.columns = [
         { header: "Record ID", key: "recordID", width: 15 },
@@ -458,7 +463,6 @@ export const generateExcel = (req, res) => {
           message: "Something went wrong...",
         });
       }
-      res.json(filteredData);
     }
   );
 };
