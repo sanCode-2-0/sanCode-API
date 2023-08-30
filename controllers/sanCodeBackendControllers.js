@@ -417,7 +417,7 @@ export const generateExcel = (req, res) => {
       fileName = fileName.replace(/ /g, "_").replace(/,/g, "");
       const workbook = new excelJS.Workbook(); // Create a new workbook
       const worksheet = workbook.addWorksheet(fileName);
-      const path = `${req.body.homeDirectory}/Desktop/sanCode-Excel-Summaries`; //Path ( relative to the root folder ) to location where workbook will be saved.
+      const path = `${KEYS.HOME}/Desktop/sanCode-Excel-Summaries`; //Path ( relative to the root folder ) to location where workbook will be saved.
       //Data Column names ( key should match column name in db )
       worksheet.columns = [
         { header: "Record ID", key: "recordID", width: 15 },
