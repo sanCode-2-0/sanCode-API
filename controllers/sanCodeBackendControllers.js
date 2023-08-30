@@ -451,23 +451,20 @@ export const generateExcel = (req, res) => {
         const excelData = await workbook.xlsx
           .writeFile(`${path}/${fileName}.xlsx`)
           .then(() => {
-            res.send({
-              status: "Success",
-              message: "Excel file has been generated",
-              path: `${path}/${fileName}.xlsx`,
-            });
+            res.download(`${path}/${fileName}.xlsx`, (error) => {
+              if (error) {
+                res.status(500).json({
+                  error: 500,
+                  message: "Error generating Excel file!"
+                })
+              }
+            })
           });
       } catch (error) {
-        //Return file to be downloaded
-
-        res.download(`${path}/${fileName}.xlsx`, (error) => {
-          if (error) {
-            res.status(500).json({
-              error: 500,
-              message: "Error generating Excel file!"
-            })
-          }
-        })
+        res.send({
+          status: "Error",
+          message: "Something went wrong...",
+        });
       }
     }
   );
