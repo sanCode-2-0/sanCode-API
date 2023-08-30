@@ -35,7 +35,6 @@ app.use("/", sanCodeBackendRoutes);
 app.listen(KEYS.PORT, () => {
   //Create "workbooks" directory if it doesn't exist
   const dir = `${KEYS.HOME}/Desktop/sanCode-Excel-Summaries`;
-
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
