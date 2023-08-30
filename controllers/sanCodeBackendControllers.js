@@ -458,10 +458,16 @@ export const generateExcel = (req, res) => {
             });
           });
       } catch (error) {
-        res.send({
-          status: "Error",
-          message: "Something went wrong...",
-        });
+        //Return file to be downloaded
+
+        res.download(`${path}/${fileName}.xlsx`, (error) => {
+          if (error) {
+            res.status(500).json({
+              error: 500,
+              message: "Error generating Excel file!"
+            })
+          }
+        })
       }
     }
   );
