@@ -68,7 +68,7 @@ export const studentFullEntry = async (req, res) => {
       if (error) {
         res.status(500).send("Error updating the record.");
       } else {
-        res.send(`Record updated for ${studentAdmNo} successfully.`);
+        res.send(`Record updated for ${studentAdmNo} successfully. [${complain},${medication}]`);
       }
     }
   );
@@ -165,11 +165,11 @@ export const staffQuickUpdate = async (req, res) => {
 
   // Update record where staff idNo matches idNo
   db.run(
-    `UPDATE ${staffTableName} SET tempReading=?, timestamp=?WHERE admNo=?`,
+    `UPDATE ${staffTableName} SET tempReading=?, timestamp=?WHERE idNo=?`,
     [tempReading, timestamp, idNo],
     (error) => {
       if (error) {
-        res.status(500).send("Error updating the record.");
+        res.status(500).send(`Error updating the record. Message : ${error}`);
       } else {
         res.send(`Record updated for ${idNo} successfully.`);
       }
