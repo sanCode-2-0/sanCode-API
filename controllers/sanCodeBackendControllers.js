@@ -61,7 +61,7 @@ export const studentFullEntry = async (req, res) => {
   // Update record where student admno matches studentAdmNo
   db.run(
     `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE admNo=?`,
-    [tempReading, complain, ailment, medication, timestamp, studentAdmNo],
+    [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo],
     (error) => {
       if (error) {
         res.status(500).send("Error updating the record.");
@@ -78,8 +78,8 @@ export const studentQuickUpdate = async (req, res) => {
 
   // Update record where student admission number matches studentAdmNo
   db.run(
-    `UPDATE ${studentTableName} SET tempReading=?WHERE admNo=?`,
-    [tempReading, studentAdmNo],
+    `UPDATE ${studentTableName} SET tempReading=?, timestamp=? WHERE admNo=?`,
+    [tempReading, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo],
     (error) => {
       if (error) {
         res.status(500).send("Error updating the record.");
@@ -136,8 +136,8 @@ export const staffFullEntry = async (req, res) => {
 
   // Update record where staff Kenyan id No matches idNo
   db.run(
-    `UPDATE ${staffTableName} SET tempReading=?, complain=?, ailment=?, medication=? WHERE idNo=?`,
-    [tempReading, complain, ailment, medication, idNo],
+    `UPDATE ${staffTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE idNo=?`,
+    [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), idNo],
     (error) => {
       if (error) {
         res.status(500).send("Error updating the record.");
@@ -154,8 +154,8 @@ export const staffQuickUpdate = async (req, res) => {
 
   // Update record where staff idNo matches idNo
   db.run(
-    `UPDATE ${staffTableName} SET tempReading=? WHERE admNo=?`,
-    [tempReading, idNo],
+    `UPDATE ${staffTableName} SET tempReading=?, timestamp=?WHERE admNo=?`,
+    [tempReading, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), idNo],
     (error) => {
       if (error) {
         res.status(500).send("Error updating the record.");
