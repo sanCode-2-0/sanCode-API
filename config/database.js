@@ -2,7 +2,7 @@ import sqlite3 from "sqlite3";
 sqlite3.verbose();
 
 //Database variables
-const databaseName = "san-code.db";
+const databaseName = "san-code.sqlite";
 export const studentTableName = "sanCodeStudent"; //Student records table
 export const staffTableName = "sanCodeStaff"; //Staff records table
 export const reportTableName = "sanCodeReport"; //Report table
