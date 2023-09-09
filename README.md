@@ -130,4 +130,4 @@ Future Features -> Editing Individual Student Records. ( Case of Transfers )
 
 > ### Downloading the .log files to my Computer to analyze them
 
-scp root@170.187.252.60:~/root/sanCode-API/logs/Wednesday_30th_August_2023.log ~/Downloads
+scp root@170.187.252.60:~/sanCode-API/logs/Wednesday_30th_August_2023.log C:/Users/ADMIN/Downloads
