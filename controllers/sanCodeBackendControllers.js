@@ -21,6 +21,7 @@ const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 export const startOfToday = moment().startOf("day");
 //End of today date
 const endOfToday = moment().endOf("day");
+
 import {
   db,
   staffTableName,
@@ -60,7 +61,7 @@ export const studentFullEntry = async (req, res) => {
   // Update record where student admno matches studentAdmNo
   db.run(
     `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE admNo=?`,
-    [tempReading, complain, ailment, medication, timestamp, studentAdmNo[0]],
+    [tempReading, complain, ailment, medication, timestamp, studentAdmNo],
     (error) => {
       if (error) {
         res.status(500).send("Error updating the record.");
@@ -278,6 +279,7 @@ export const updateReport = async (req, res) => {
       if (dateToBeChecked.isBetween(startOfToday, endOfToday)) {
         filteredData.push(data[i]);
       }
+
     }
 
     const ailmentsChecked = await loadData();
@@ -291,6 +293,7 @@ export const updateReport = async (req, res) => {
     });
 
     const todayAsANumber = moment().date();
+
 
     const updatePromises = [];
     for (const eachAilmentToUpdate in countByAilment) {
