@@ -58,12 +58,12 @@ export const studentFullEntry = async (req, res) => {
   const { studentAdmNo, tempReading, complain, ailment, medication } = req.body;
 
   // Timestamp
-  const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
+  // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
   // Update record where student admno matches studentAdmNo
   db.run(
     `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE admNo=?`,
-    [tempReading, complain, ailment, medication, timestamp, studentAdmNo],
+    [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo],
     (error) => {
       if (error) {
         res.status(500).send("Error updating the record.");
@@ -79,12 +79,12 @@ export const studentQuickUpdate = async (req, res) => {
   const { studentAdmNo, tempReading } = req.body;
 
   // Timestamp
-  const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
+  // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
   // Update record where student admission number matches studentAdmNo
   db.run(
     `UPDATE ${studentTableName} SET tempReading=?, timestamp=?WHERE admNo=?`,
-    [tempReading, timestamp, studentAdmNo],
+    [tempReading, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo],
     (error) => {
       if (error) {
         res.status(500).send("Error updating the record.");
@@ -140,12 +140,12 @@ export const staffFullEntry = async (req, res) => {
   const { idNo, tempReading, complain, ailment, medication } = req.body;
 
   // Timestamp
-  const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
+  // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
   // Update record where staff Kenyan id No matches idNo
   db.run(
     `UPDATE ${staffTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE idNo=?`,
-    [tempReading, complain, ailment, medication, timestamp, idNo],
+    [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), idNo],
     (error) => {
       if (error) {
         res.status(500).send("Error updating the record.");
@@ -161,12 +161,12 @@ export const staffQuickUpdate = async (req, res) => {
   const { idNo, tempReading } = req.body;
 
   // Timestamp
-  const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
+  // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
   // Update record where staff idNo matches idNo
   db.run(
     `UPDATE ${staffTableName} SET tempReading=?, timestamp=?WHERE idNo=?`,
-    [tempReading, timestamp, idNo],
+    [tempReading, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), idNo],
     (error) => {
       if (error) {
         res.status(500).send(`Error updating the record. Message : ${error}`);
