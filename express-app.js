@@ -29,7 +29,21 @@ var accessLogStream = fs.createWriteStream(
 // setup the logger
 app.use(morgan("combined", { stream: accessLogStream }));
 
+
 app.use("/", sanCodeBackendRoutes);
+
+
+
+
+
+//TaskRouletteAPI
+import taskRoutes from "./routes/taskRoutes.js";
+import connectDB from "./config/db.js";
+app.use("/task-roulette/tasks/", taskRoutes);
+
+
+
+
 
 // Start the server
 app.listen(KEYS.PORT, () => {
@@ -54,5 +68,7 @@ app.listen(KEYS.PORT, () => {
     }
   });
 
-  console.log(`Server is listening on port ${KEYS.PORT}`);
+  connectDB().then(() => {
+    console.log(`Listening  on Port ${KEYS.PORT}`);
+  });
 });

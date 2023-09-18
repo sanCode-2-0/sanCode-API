@@ -6,4 +6,5 @@ export const KEYS = {
   //Path to Home
   HOME: process.env.HOME,
   LOG_DIR: "./logs",
+  MONGO_URI: process.env.MONGO_URI
 };
