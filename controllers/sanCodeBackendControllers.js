@@ -67,24 +67,30 @@ export const getStudentByAdmissionNumber = async (req, res) => {
 
 // Endpoint to accept data from the full entry submission
 export const studentFullEntry = async (req, res) => {
-  const { studentAdmNo, tempReading, complain, ailment, medication } = req.body;
 
-  // Timestamp
-  // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
+  if (req?.body !== null) {
+    const { studentAdmNo, tempReading, complain, ailment, medication } = req.body;
+    // Timestamp
+    // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
-  // Update record where student admno matches studentAdmNo
-  db.run(
-    `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE admNo=?`,
-    [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo],
-    (error) => {
-      if (error) {
-        // console.error(error.message);
-        res.status(500).send("An error occurred while processing the request.");
-      } else {
-        res.send(`Record updated for ${studentAdmNo} successfully. [${complain},${medication}]`);
+    // Update record where student admno matches studentAdmNo
+    db.run(
+      `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE admNo=?`,
+      [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo],
+      (error) => {
+        if (error) {
+          // console.error(error.message);
+          res.status(500).send("An error occurred while processing the request.");
+        } else {
+          res.send(`Record updated for ${studentAdmNo} successfully. [${complain},${medication}]`);
+        }
       }
-    }
-  );
+    );
+  } else {
+    res.status(400).json({ error: "Invalid request body" });
+  }
+
+
 };
 
 // Endpoint to accept data from the quick update submission
