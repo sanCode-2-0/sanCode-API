@@ -67,36 +67,40 @@ export const getStudentByAdmissionNumber = async (req, res) => {
 
 // Endpoint to accept data from the full entry submission
 export const studentFullEntry = async (req, res) => {
+  try {
+    if (req?.body !== null) {
+      const { studentAdmNo, tempReading, complain, ailment, medication } = req.body;
 
-  if (req?.body !== null) {
-    const { studentAdmNo, tempReading, complain, ailment, medication } = req.body;
-
-    //Validate input data
-    if (!studentAdmNo || !tempReading || !complain || !ailment || !medication) {
-      res.status(400).json({ error: "Invalid input data" })
-      return
-    }
-    // Timestamp
-    // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
-
-    // Update record where student admno matches studentAdmNo
-    db.run(
-      `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE admNo=?`,
-      [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo],
-      (error) => {
-        if (error) {
-          // console.error(error.message);
-          res.status(500).send("An error occurred while processing the request.");
-        } else {
-          res.send(`Record updated for ${studentAdmNo} successfully. [${complain},${medication}]`);
-        }
+      //Validate input data
+      if (!studentAdmNo || !tempReading || !complain || !ailment || !medication) {
+        res.status(400).json({ error: "Invalid input data" })
+        return
       }
-    );
-  } else {
+      // Timestamp
+      // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
+
+      // Update record where student admno matches studentAdmNo
+      db.run(
+        `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE admNo=?`,
+        [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo],
+        (error) => {
+          if (error) {
+            // console.error(error.message);
+            res.status(500).send("An error occurred while processing the request.");
+          } else {
+            if (this.changes === 0) {
+              res.status(404).json({ message: "No rows were updated" });
+            } else {
+              res.send(`Record updated for ${studentAdmNo} successfully. [${complain},${medication}]`);
+            }
+
+          }
+        }
+      );
+    }
+  } catch (error) {
     res.status(400).json({ error: "Invalid request body" });
   }
-
-
 };
 
 // Endpoint to accept data from the quick update submission
