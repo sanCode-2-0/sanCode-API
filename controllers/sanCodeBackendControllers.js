@@ -42,8 +42,8 @@ export const getStudentByAdmissionNumber = async (req, res) => {
 
   // Select table
   db.all(
-    `SELECT * FROM ${studentTableName} WHERE admNo=${admissionNumber}`,
-    [],
+    `SELECT * FROM ${studentTableName} WHERE admNo=?`,
+    [admissionNumber],
     (err, rows) => {
       if (err) {
         console.error(err.message);
