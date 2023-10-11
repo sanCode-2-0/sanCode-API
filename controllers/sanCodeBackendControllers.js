@@ -78,7 +78,8 @@ export const studentFullEntry = async (req, res) => {
     [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo],
     (error) => {
       if (error) {
-        res.status(500).send("Error updating the record.");
+        // console.error(error.message);
+        res.status(500).send("An error occurred while processing the request.");
       } else {
         res.send(`Record updated for ${studentAdmNo} successfully. [${complain},${medication}]`);
       }
