@@ -38,10 +38,12 @@ export const defaultResponse = async (req, res) => {
 };
 //Endpoint to validate that student exists in the database
 export const getStudentByAdmissionNumber = async (req, res) => {
-  const admissionNumber = req.params.admissionNumber;
+  const admissionNumber = Number(req.params.admissionNumber);
 
   // Validate admissionNumber input
-  (typeof admissionNumber !== 'number') ? res.status(400).json({ error: "Invalid admission number" }) : null;
+  if (typeof admissionNumber !== 'number') {
+    return res.status(400).json({ error: "Invalid admission number" })
+  }
   // Select table
   db.all(
     `SELECT * FROM ${studentTableName} WHERE admNo=?`,
@@ -52,8 +54,10 @@ export const getStudentByAdmissionNumber = async (req, res) => {
         //console.log(err)
         res.status(500).json({ error: "An error occurred. Please try again later" });
         return
-      } else if (rows.length === 0) {
+      }
+      if (rows.length === 0) {
         res.status(404).json({ error: "Student not found" })
+        return
       }
       res.json(rows);
     }
