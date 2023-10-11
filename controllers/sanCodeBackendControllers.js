@@ -45,7 +45,7 @@ export const getStudentByAdmissionNumber = async (req, res) => {
     return res.status(400).json({ error: "Invalid admission number" })
   }
   // Select table
-  db.all(
+  db.get(
     `SELECT * FROM ${studentTableName} WHERE admNo=?`,
     [admissionNumber],
     (err, rows) => {
