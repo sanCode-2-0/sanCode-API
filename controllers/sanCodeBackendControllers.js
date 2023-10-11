@@ -46,7 +46,8 @@ export const getStudentByAdmissionNumber = async (req, res) => {
     [admissionNumber],
     (err, rows) => {
       if (err) {
-        console.error(err.message);
+        res.status(500).json({ error: "Internal Server Error" });
+        return
       }
       res.json(rows);
     }
