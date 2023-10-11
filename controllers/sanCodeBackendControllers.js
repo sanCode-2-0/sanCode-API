@@ -70,6 +70,12 @@ export const studentFullEntry = async (req, res) => {
 
   if (req?.body !== null) {
     const { studentAdmNo, tempReading, complain, ailment, medication } = req.body;
+
+    //Validate input data
+    if (!studentAdmNo || !tempReading || !complain || !ailment || !medication) {
+      res.status(400).json({ error: "Invalid input data" })
+      return
+    }
     // Timestamp
     // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
