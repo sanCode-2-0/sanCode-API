@@ -40,6 +40,8 @@ export const defaultResponse = async (req, res) => {
 export const getStudentByAdmissionNumber = async (req, res) => {
   const admissionNumber = req.params.admissionNumber;
 
+  // Validate admissionNumber input
+  (typeof admissionNumber !== 'number') ? res.status(400).json({ error: "Invalid admission number" }) : null;
   // Select table
   db.all(
     `SELECT * FROM ${studentTableName} WHERE admNo=?`,
