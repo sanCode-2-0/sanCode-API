@@ -48,6 +48,8 @@ export const getStudentByAdmissionNumber = async (req, res) => {
       if (err) {
         res.status(500).json({ error: "Internal Server Error" });
         return
+      } else if (rows.length === 0) {
+        res.status(404).json({ error: "Student not found" })
       }
       res.json(rows);
     }
