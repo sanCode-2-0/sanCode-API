@@ -60,6 +60,7 @@ export const getStudentByAdmissionNumber = async (req, res) => {
         return
       }
       res.json(rows);
+      db.close();
     }
   );
 };
