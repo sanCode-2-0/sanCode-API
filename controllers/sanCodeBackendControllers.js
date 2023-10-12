@@ -88,11 +88,9 @@ export const studentFullEntry = async (req, res) => {
             // console.error(error.message);
             res.status(500).send("An error occurred while processing the request.");
           } else {
-            if (this.changes === 0) {
-              res.status(404).json({ message: "No rows were updated" });
-            } else {
-              res.send(`Record updated for ${studentAdmNo} successfully. [${complain},${medication}]`);
-            }
+            //Should only return if rows are updated
+
+            res.send(`Record updated for ${studentAdmNo} successfully.`);
 
           }
         }
