@@ -90,7 +90,7 @@ export const studentFullEntry = async (req, res) => {
           } else {
             //Should only return if rows are updated
 
-            res.send(`Record updated for ${studentAdmNo} successfully.`);
+            res.send(`Record updated for ${studentAdmNo} successfully. ${new Date().toISOString().replace(/T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, "")} `);
 
           }
         }
@@ -105,16 +105,22 @@ export const studentFullEntry = async (req, res) => {
 export const studentQuickUpdate = async (req, res) => {
   const { studentAdmNo, tempReading } = req.body;
 
+  //Validate input
+  if (!studentAdmNo || !tempReading) {
+    res.status(400).json({ error: "Invalid input data" })
+    return
+  }
   // Timestamp
   // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
   // Update record where student admission number matches studentAdmNo
   db.run(
-    `UPDATE ${studentTableName} SET tempReading=?, timestamp=?WHERE admNo=?`,
-    [tempReading, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo],
+    `UPDATE ${studentTableName} SET tempReading =?, timestamp =? WHERE admNo =? `,
+    [tempReading, new Date().toISOString(), studentAdmNo],
     (error) => {
       if (error) {
-        res.status(500).send("Error updating the record.");
+        //Log error.message
+        res.status(500).send({ error: "An error occured while updating the record." });
       } else {
         res.send(`Record updated for ${studentAdmNo} successfully.`);
       }
@@ -128,7 +134,7 @@ export const getStaffMemberByID = async (req, res) => {
 
   // Select all from staff table
   db.all(
-    `SELECT * FROM ${staffTableName} WHERE idNo=${idNo}`,
+    `SELECT * FROM ${staffTableName} WHERE idNo = ${idNo} `,
     [],
     (err, rows) => {
       if (err) {
@@ -171,7 +177,7 @@ export const staffFullEntry = async (req, res) => {
 
   // Update record where staff Kenyan id No matches idNo
   db.run(
-    `UPDATE ${staffTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE idNo=?`,
+    `UPDATE ${staffTableName} SET tempReading =?, complain =?, ailment =?, medication =?, timestamp =? WHERE idNo =? `,
     [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), idNo],
     (error) => {
       if (error) {
@@ -192,11 +198,11 @@ export const staffQuickUpdate = async (req, res) => {
 
   // Update record where staff idNo matches idNo
   db.run(
-    `UPDATE ${staffTableName} SET tempReading=?, timestamp=?WHERE idNo=?`,
+    `UPDATE ${staffTableName} SET tempReading =?, timestamp =? WHERE idNo =? `,
     [tempReading, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), idNo],
     (error) => {
       if (error) {
-        res.status(500).send(`Error updating the record. Message : ${error}`);
+        res.status(500).send(`Error updating the record.Message : ${error} `);
       } else {
         res.send(`Record updated for ${idNo} successfully.`);
       }
@@ -285,9 +291,9 @@ export const updateReport = async (req, res) => {
       db.all(
         `SELECT staffRecordID AS recordID, idNo AS admNo, fName, sName, NULL AS class, tempReading, complain, ailment, medication, timestamp
         FROM ${staffTableName}
-        UNION
+          UNION
         SELECT recordID, admNo, fName, sName, class, tempReading, complain, ailment, medication, timestamp
-        FROM ${studentTableName}`,
+        FROM ${studentTableName} `,
         [],
         (err, rows) => {
           if (err) {
@@ -349,7 +355,7 @@ export const updateReport = async (req, res) => {
               );
               reject(error);
             } else {
-              // console.log(`Updated ${eachAilmentToUpdate} with ${updateValue} for this day of the month : ${todayAsANumber}`);
+              // console.log(`Updated ${ eachAilmentToUpdate } with ${ updateValue } for this day of the month: ${ todayAsANumber } `);
               resolve();
             }
           });
@@ -413,9 +419,9 @@ export const generateExcel = (req, res) => {
   db.all(
     `SELECT staffRecordID AS recordID, idNo AS regNo, fName, sName, NULL AS tName, NULL AS fourthName, NULL AS class, tempReading, complain, ailment, medication, timestamp
     FROM ${staffTableName}
-    UNION
+          UNION
     SELECT recordID, admNo AS regNo, fName, sName, tName, fourthName, class, tempReading, complain, ailment, medication, timestamp
-    FROM ${studentTableName}`,
+    FROM ${studentTableName} `,
     [],
     async (err, rows) => {
       if (err) {
@@ -458,7 +464,7 @@ export const generateExcel = (req, res) => {
       fileName = fileName.replace(/ /g, "_").replace(/,/g, "");
       const workbook = new excelJS.Workbook(); // Create a new workbook
       const worksheet = workbook.addWorksheet(fileName);
-      const path = `${KEYS.HOME}/Desktop/sanCode-Excel-Summaries`; //Path ( relative to the root folder ) to location where workbook will be saved.
+      const path = `${KEYS.HOME} /Desktop/sanCode - Excel - Summaries`; //Path ( relative to the root folder ) to location where workbook will be saved.
       //Data Column names ( key should match column name in db )
       worksheet.columns = [
         { header: "Record ID", key: "recordID", width: 15 },
@@ -490,7 +496,7 @@ export const generateExcel = (req, res) => {
       //A try catch block to generate excel file
       try {
         const excelData = await workbook.xlsx
-          .writeFile(`${path}/${fileName}.xlsx`)
+          .writeFile(`${path} /${fileName}.xlsx`)
           .then(() => {
             res.download(`${path}/${fileName}.xlsx`, (error) => {
               if (error) {
