@@ -32,19 +32,6 @@ app.use(morgan("combined", { stream: accessLogStream }));
 
 app.use("/", sanCodeBackendRoutes);
 
-
-
-
-
-//TaskRouletteAPI
-import taskRoutes from "./routes/taskRoutes.js";
-import connectDB from "./config/db.js";
-app.use("/task-roulette/tasks/", taskRoutes);
-
-
-
-
-
 // Start the server
 app.listen(KEYS.PORT, () => {
   //Create "workbooks" directory if it doesn't exist
