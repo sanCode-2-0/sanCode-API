@@ -1,3 +1,4 @@
+import { validationResult, check } from 'express-validator';
 import express, { json } from "express";
 const app = express();
 import cors from "cors";
@@ -36,31 +37,41 @@ export const defaultResponse = async (req, res) => {
     message: "Make requests to the san-code API",
   });
 };
+// Import the validation library
+
 //Endpoint to validate that student exists in the database
 export const getStudentByAdmissionNumber = async (req, res) => {
   const admissionNumber = Number(req.params.admissionNumber);
 
   // Validate admissionNumber input
-  if (typeof admissionNumber !== 'number') {
-    return res.status(400).json({ error: "Invalid admission number" })
+  const validationRules = [
+    // Rule to check if admissionNumber is a number
+    check('admissionNumber').isNumeric().withMessage('Invalid admission number'),
+  ];
+
+  // Validate the input
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
   }
+
   // Select table
   db.get(
     `SELECT * FROM ${studentTableName} WHERE admNo=?`,
     [admissionNumber],
     (err, rows) => {
       if (err) {
-        //Should log the error to a file and send generic responses
-        //console.log(err)
+        // Log the error to a file
+        console.error(err);
+        // Send generic response for database disconnection error
         res.status(500).json({ error: "An error occurred. Please try again later" });
-        return
+        return;
       }
       if (rows.length === 0) {
-        res.status(404).json({ error: "Student not found" })
-        return
+        res.status(404).json({ error: "Student not found" });
+        return;
       }
       res.json(rows);
-      db.close();
     }
   );
 };
