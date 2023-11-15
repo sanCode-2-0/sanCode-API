@@ -102,21 +102,22 @@ export const studentFullEntry = async (req, res) => {
       // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
       // Update record where student admno matches studentAdmNo
-      db.run(
-        `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=?WHERE admNo=?`,
-        [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo],
-        (error) => {
-          if (error) {
-            // console.error(error.message);
-            res.status(500).send("An error occurred while processing the request.");
+      const query = `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=? WHERE admNo=?`;
+      const values = [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo];
+      //Regular function is used instead of arrow function to be able to access `this` within the function
+      db.run(query, values, function (error) {
+        if (error) {
+          // console.error(error.message);
+          res.status(500).send("An error occurred while processing the request.");
+        } else {
+          //Should only return if rows are updated
+          if (this.changes === 0) {
+            res.status(404).send("No rows were updated.");
           } else {
-            //Should only return if rows are updated
-
             res.send(`Record updated for ${studentAdmNo} successfully. ${new Date().toISOString().replace(/T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, "")} `);
-
           }
         }
-      );
+      });
     }
   } catch (error) {
     res.status(400).json({ error: "Invalid request body" });
