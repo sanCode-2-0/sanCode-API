@@ -112,7 +112,7 @@ export const studentFullEntry = async (req, res) => {
         } else {
           //Should only return if rows are updated
           if (this.changes === 0) {
-            res.status(404).send("No rows were updated.");
+            res.status(301).send("No rows were updated.");
           } else {
             res.send(`Record updated for ${studentAdmNo} successfully. ${new Date().toISOString().replace(/T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, "")} `);
           }
