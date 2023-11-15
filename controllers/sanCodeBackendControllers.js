@@ -78,8 +78,19 @@ export const getStudentByAdmissionNumber = async (req, res) => {
 
 // Endpoint to accept data from the full entry submission
 export const studentFullEntry = async (req, res) => {
+  /*
+   * FLOW
+   * Check if request body exists and is not null.
+   * Destructure the required properties from the request body.
+   * Check if any properties are missing in the input data
+   * If any required property is missing, send back a 404 status code with an error message.
+   * If all required properties are present, update the record in the db using the db.run method.
+   * The SQL query updates the record in the studentTableName table with the provided data and the current timestamp.
+   * If an error occurs during the update, send a response with a 500 status code and an error message.
+   * If the update is successful, send a response with a success message and the current timestamp.
+   */
   try {
-    if (req?.body !== null) {
+    if (req?.body !== null && req?.body !== undefined) {
       const { studentAdmNo, tempReading, complain, ailment, medication } = req.body;
 
       //Validate input data
