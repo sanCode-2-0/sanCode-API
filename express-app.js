@@ -7,12 +7,15 @@ import path from "path";
 import morgan from "morgan";
 import moment from "moment-timezone";
 import express from "express";
+import {errorHandler} from "./middlewear/errorHandler.js";
 
 export const app = express();
 
+//Middleware
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());
+app.use(errorHandler);
 
 const startOfToday = moment().format("dddd_Do_MMMM_YYYY");
 const accessLogStream = fs.createWriteStream(path.join(KEYS.LOG_DIR, `${startOfToday}.log`), { flags: "a" });
