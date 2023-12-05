@@ -10,7 +10,8 @@
     "express-app": "express-app.js"
   },
   "scripts": {
-    "test": "nodemon express-app.js",
+    "test": "cross-env NODE_ENV=test jest --testTimeout=5000",
+    "dev": "nodemon express-app.js",
     "start": "pm2 start express-app.js"
   },
   "keywords": [],
