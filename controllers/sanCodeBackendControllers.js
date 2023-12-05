@@ -11,12 +11,6 @@ app.use(cors());
 app.use(json());
 app.use(_json());
 
-//Open a database connection
-//Open a database RTCPeerConnection
-
-//Database variables
-
-
 // Start of today date
 export const startOfToday = moment().startOf("day");
 //End of today date

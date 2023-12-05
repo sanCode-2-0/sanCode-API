@@ -8,7 +8,7 @@ import morgan from "morgan";
 import moment from "moment-timezone";
 import express from "express";
 
-const app = express();
+export const app = express();
 
 app.use(cors());
 app.use(express.json());
