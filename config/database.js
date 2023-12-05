@@ -14,3 +14,4 @@ export const db = new sqlite3.Database(`database/${databaseName}`, (err) => {
     console.log(`Connected to the database: ${databaseName}`);
   }
 });
+
