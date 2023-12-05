@@ -32,6 +32,12 @@ app.listen(KEYS.PORT, () => {
     }
   });
 
+  //Create logs folder
+  const logsFolder = "logs";
+  if(!fs.existsSync(logsFolder)){
+    fs.mkdirSync(logsFolder,{recursive: true});
+  }
+
   fs.writeFile(`./logs/${startOfToday}.log`, "", (err) => {
     if (err) {
       console.log(err);
