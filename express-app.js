@@ -10,6 +10,7 @@ import express from "express";
 import {errorHandler} from "./middlewear/errorHandler.js";
 import {connectToMongoDB} from "./config/mongoDB.js";
 import studentRoutes from "./routes/v2/studentRoutes.js";
+import staffRoutes from "./routes/v2/staffRoutes.js";
 
 export const app = express();
 
@@ -24,7 +25,8 @@ app.use(morgan("combined", { stream: accessLogStream }));
 
 //Routes
 app.use("/", sanCodeBackendRoutes);
-app.use("/v2", studentRoutes);
+app.use("/v2/student", studentRoutes);
+app.use("/v2/staff", staffRoutes);
 
 app.listen(KEYS.PORT, () => {
   const dir = `${KEYS.HOME}/Desktop/sanCode-Excel-Summaries`;

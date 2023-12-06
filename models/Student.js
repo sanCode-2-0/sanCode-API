@@ -41,10 +41,8 @@ const studentSchema = new Schema({
         type: Number,
         required: false,
     },
-    timestamp: {
-        type: Date,
-        required: true,
-    },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
 });
 
 export const Student = model("student",studentSchema);
