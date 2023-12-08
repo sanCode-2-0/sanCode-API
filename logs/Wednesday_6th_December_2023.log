@@ -1,0 +1,2 @@
+::1 - - [06/Dec/2023:16:36:13 +0000] "PUT /v2/student/full-update/13555 HTTP/1.1" 200 328 "-" "PostmanRuntime/7.35.0"
+::1 - - [06/Dec/2023:16:36:29 +0000] "PUT /v2/student/full-update/13555 HTTP/1.1" 200 350 "-" "PostmanRuntime/7.35.0"

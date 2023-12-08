@@ -1,0 +1,35 @@
+[
+    {
+        "ailment": "other bites",
+        "complain": "bee sting",
+        "fName": "Mildred",
+        "idNo": 21772421,
+        "medication": "cet, hydrocort inj,",
+        "sName": "Mulima",
+        "staffRecordID": 4,
+        "tempReading": 37.9,
+        "timestamp": "2023-09-10 14:12:16"
+    },
+    {
+        "ailment": "other bites",
+        "complain": "bee sting",
+        "fName": "Mildred",
+        "idNo": 21772421,
+        "medication": "cet, hydrocort inj,",
+        "sName": "Mulima",
+        "staffRecordID": 5,
+        "tempReading": 37.9,
+        "timestamp": "2023-09-10 14:12:16"
+    },
+    {
+        "ailment": "other bites",
+        "complain": "bee sting",
+        "fName": "Mildred",
+        "idNo": 21772421,
+        "medication": "cet, hydrocort inj,",
+        "sName": "Mulima",
+        "staffRecordID": 6,
+        "tempReading": 37.9,
+        "timestamp": "2023-09-10 14:12:16"
+    }
+]
