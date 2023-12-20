@@ -130,3 +130,5 @@ dist
 
 # sqlite databases
 database/san-code.db
+database/san-code.sqlite
+*.sqlite
