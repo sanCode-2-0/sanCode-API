@@ -143,3 +143,17 @@ describe("Test GET /student-data",()=>{
         }
     })
 })
+
+describe("Test GET /update-report",()=>{
+    //Properties of response body
+    // {
+    //     message: "Successfully updated the report"
+    // }
+    test("Properties of response body",async()=>{
+        const response = await request(app)
+            .get("/update-report")
+
+        const responseBody = response._body;
+        expect(responseBody).toHaveProperty('message')
+    })
+})
