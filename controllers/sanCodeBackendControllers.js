@@ -304,6 +304,10 @@ export const getStaffData = (req, res) => {
 
 // Endpoint to update report data
 export const updateReport = async (req, res) => {
+  // When I wrote this function - Only God and I could understand it
+  // Now only God understands it.
+  // If you're trying to optimize this block - Please add to the counter and move on
+  // Wasted Hours - 13
   try {
     const rows = await new Promise((resolve, reject) => {
       db.all(
@@ -424,7 +428,7 @@ export const updateReport = async (req, res) => {
       });
     });
 
-    res.json({ status: "successful" });
+    res.json({ status: "Successfully updated the report" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ status: "Error" });

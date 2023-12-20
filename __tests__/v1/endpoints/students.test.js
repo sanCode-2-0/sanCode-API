@@ -95,3 +95,51 @@ describe("Test POST /student-quick-update",()=>{
         expect(response._body).toHaveProperty('message')
     })
 })
+
+describe("Test GET /student-data",()=>{
+
+    //Status 200 - Successful
+    test("Status 200 - Successful",async()=>{
+        await request(app)
+            .get("/student-data")
+            .expect(200)
+    })
+
+    //Properties in the received JSON
+    // {
+    //     recordID: 1082,
+    //         admNo: 13256,
+    //     fName: 'BRIANE',
+    //     sName: 'LOMONI',
+    //     class: '5D',
+    //     tempReading: 36.7,
+    //     complain: 'Fever',
+    //     ailment: 'Fevers',
+    //     medication: 'PCM',
+    //     timestamp: '2023-12-20T13:05:13.515Z',
+    //     tName: null,
+    //     fourthName: null
+    // }
+    test("Properties in the received JSON",async ()=>{
+        const response = await request(app)
+            .get("/student-data")
+            .expect(200)
+
+        const responseBody = response._body;
+        const responseBodyLength = response._body.length;
+        for(let counter = 0; counter < responseBodyLength; counter++){
+            expect(responseBody[counter]).toHaveProperty('recordID')
+            expect(responseBody[counter]).toHaveProperty('admNo')
+            expect(responseBody[counter]).toHaveProperty('fName')
+            expect(responseBody[counter]).toHaveProperty('sName')
+            expect(responseBody[counter]).toHaveProperty('class')
+            expect(responseBody[counter]).toHaveProperty('tempReading')
+            expect(responseBody[counter]).toHaveProperty('complain')
+            expect(responseBody[counter]).toHaveProperty('ailment')
+            expect(responseBody[counter]).toHaveProperty('medication')
+            expect(responseBody[counter]).toHaveProperty('timestamp')
+            expect(responseBody[counter]).toHaveProperty('tName')
+            expect(responseBody[counter]).toHaveProperty('fourthName')
+        }
+    })
+})

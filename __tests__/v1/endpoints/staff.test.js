@@ -88,3 +88,45 @@ describe("Test POST /staff-quick-update",()=>{
         expect(response._body).toHaveProperty('message')
     })
 })
+
+describe("Test GET /staff-data",()=>{
+
+    //Status 200 - Successful
+    test("Status 200 - Successful",async()=>{
+        await request(app)
+            .get("/staff-data")
+            .expect(200)
+    })
+
+    //Properties in the received JSON
+    // {
+    //     idNo: 21772421,
+    //     fName: 'Mildred',
+    //     sName: 'Mulima',
+    //     tempReading: 37.9,
+    //     complain: 'bee sting',
+    //     ailment: 'other bites',
+    //     medication: 'cet, hydrocort inj,',
+    //     timestamp: '2023-09-10 14:12:16'
+    // }
+    test("Properties in the received JSON",async ()=>{
+        const response = await request(app)
+            .get("/staff-data")
+            .expect(200)
+
+        const bodyData = response._body;
+        const responseBodyLength = response._body.length;
+        for(let counter = 0; counter < responseBodyLength; counter++){
+            expect(bodyData[counter]).toHaveProperty('staffRecordID')
+            expect(bodyData[counter]).toHaveProperty('idNo')
+            expect(bodyData[counter]).toHaveProperty('fName')
+            expect(bodyData[counter]).toHaveProperty('sName')
+            expect(bodyData[counter]).toHaveProperty('tempReading')
+            expect(bodyData[counter]).toHaveProperty('complain')
+            expect(bodyData[counter]).toHaveProperty('ailment')
+            expect(bodyData[counter]).toHaveProperty('medication')
+            expect(bodyData[counter]).toHaveProperty('timestamp')
+
+        }
+    })
+})
