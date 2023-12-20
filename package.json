@@ -10,7 +10,8 @@
     "express-app": "express-app.js"
   },
   "scripts": {
-    "test": "jest --testTimeout=5000",
+    "test-students": "jest --testTimeout=5000 students.test.js",
+    "test-staff": "jest --testTimeout=5000 staff.test.js",
     "dev": "nodemon express-app.js",
     "start": "pm2 start express-app.js"
   },
