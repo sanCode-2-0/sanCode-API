@@ -20,7 +20,7 @@ app.use(morgan("combined", { stream: accessLogStream }));
 
 app.use("/", sanCodeBackendRoutes);
 
-app.listen(KEYS.PORT || 8080, () => {
+app.listen(KEYS.PORT, () => {
   const dir = `${KEYS.HOME}/Desktop/sanCode-Excel-Summaries`;
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
