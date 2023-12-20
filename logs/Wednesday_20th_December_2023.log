@@ -1,5 +1,1 @@
-::ffff:127.0.0.1 - - [20/Dec/2023:14:45:46 +0000] "GET /update-report HTTP/1.1" 500 19 "-" "-"
-::1 - - [20/Dec/2023:14:46:01 +0000] "GET /update-report HTTP/1.1" 500 19 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-::1 - - [20/Dec/2023:14:46:04 +0000] "GET /update-report HTTP/1.1" 500 19 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-::1 - - [20/Dec/2023:14:46:05 +0000] "GET /update-report HTTP/1.1" 500 19 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-::1 - - [20/Dec/2023:14:46:06 +0000] "GET /update-report HTTP/1.1" 500 19 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+::ffff:127.0.0.1 - - [20/Dec/2023:14:55:32 +0000] "GET /generate-excel HTTP/1.1" 200 54 "-" "-"

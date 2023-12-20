@@ -157,3 +157,12 @@ describe("Test GET /update-report",()=>{
         expect(responseBody).toHaveProperty('message')
     })
 })
+
+describe("Test GET /generate-excel",()=>{
+    test("Status",async()=>{
+        const response = await request(app)
+            .get('/generate-excel')
+
+        console.log(response._body)
+    })
+})
