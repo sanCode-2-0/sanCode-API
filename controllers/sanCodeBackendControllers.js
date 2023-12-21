@@ -428,7 +428,7 @@ export const updateReport = async (req, res) => {
       });
     });
 
-    res.status(200).json({ message: "Successfully updated the report" });
+    res.status(200).json({ status: 200, message: "Successfully updated the report" });
   } catch (error) {
     res.status(500).json({ message: "Error" });
   }

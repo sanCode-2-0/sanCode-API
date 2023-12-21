@@ -46,10 +46,10 @@ describe("Test GET /students/:admissionNumber", ()=>{
 describe("Test POST /student-full-entry",()=>{
     const testPostData = {
         studentAdmNo : testAdmissionNumber,
-        tempReading : 36.6,
+        tempReading : 45.8,
         complain: "Fever",
         ailment: "Fevers",
-        medication: "PCM"
+        medication: "gfddddddde"
     }
     //Status 204 - Updated with no return meaningful data
     test("Successfully update the data in the database",async()=>{
