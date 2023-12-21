@@ -1,6 +1,6 @@
 async function fetchData() {
   try {
-    const response = await fetch("http://localhost:5000/disease");
+    const response = await fetch("http://localhost:6969/disease");
     return response.json();
   } catch (error) {
     // Handle any errors
