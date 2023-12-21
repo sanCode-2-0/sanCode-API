@@ -166,3 +166,45 @@ describe("Test GET /generate-excel",()=>{
         console.log(response._body)
     })
 })
+
+// describe("Test POST /new-students",()=>{
+//     const arrayWithNewStudents = [
+//         "Tony","Stark",1234,"4K"
+//     ]
+//     //Status 201 - Created
+//     test("Status 201 - Created", async()=>{
+//         await request(app)
+//             .post("/new-students")
+//             .send(arrayWithNewStudents)
+//             .expect(201)
+//     })
+// })
+
+describe("Test GET /disease",()=>{
+    test("Status 200 - Successful",async()=>{
+        await request(app)
+            .get("/disease")
+            .expect(200)
+    })
+
+    //Properties of body
+    //{disease:""}
+    test("Properties of body",async ()=>{
+        const response = await request(app)
+            .get("/disease")
+
+        const responseBody = response._body;
+        for(let counter = 0; counter < responseBody.length; counter++){
+            expect(responseBody[counter]).toHaveProperty('disease')
+        }
+    })
+})
+
+describe("Test GET /report",()=>{
+    //Status 200 - Successful
+    test("Status 200 - Successful",async ()=>{
+        await request(app)
+            .get("/report")
+            .expect(200)
+    })
+})
