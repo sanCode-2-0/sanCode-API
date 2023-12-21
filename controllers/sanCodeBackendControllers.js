@@ -576,9 +576,8 @@ export const newStudents = async (req, res) => {
     });
   });
 
-  res.send({
-    status: 200,
-    message: "Database has been updated",
+  res.status(201).send({
+    message: "New student details have been created",
   });
 };
 
@@ -596,7 +595,7 @@ export const getDiseaseNames = (req, res) => {
       });
       return obj;
     });
-    res.json(data);
+    res.status(200).json(data);
   });
 };
 
@@ -616,7 +615,7 @@ export const getReportData = (req, res) => {
       });
       return obj;
     });
-    res.json(data);
+    res.status(200).json(data);
   });
 };
 
