@@ -67,7 +67,7 @@ export const getStudentByAdmissionNumber = async (req, res) => {
         res.status(500).json({ error: "An error occurred. Please try again later" });
         return;
       }
-      if (rows.length === 0) {
+      if (rows !== undefined && rows.length === 0) {
         res.status(404).json({ error: "Student not found" });
         return;
       }
