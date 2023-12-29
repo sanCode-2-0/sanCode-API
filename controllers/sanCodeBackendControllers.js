@@ -11,12 +11,6 @@ app.use(cors());
 app.use(json());
 app.use(_json());
 
-//Open a database connection
-//Open a database RTCPeerConnection
-
-//Database variables
-
-
 // Start of today date
 export const startOfToday = moment().startOf("day");
 //End of today date
@@ -112,9 +106,10 @@ export const studentFullEntry = async (req, res) => {
         } else {
           //Should only return if rows are updated
           if (this.changes === 0) {
-            res.status(301).send("No rows were updated.");
+            res.status(204).send("No rows were updated.");
           } else {
-            res.send(`Record updated for ${studentAdmNo} successfully. ${new Date().toISOString().replace(/T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, "")} `);
+            //Status 200 - Success
+            res.status(200).json({ status: 200, message: `Record updated for ${studentAdmNo} successfully. ${new Date().toISOString().replace(/T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, "")} ` });
           }
         }
       });
@@ -145,7 +140,7 @@ export const studentQuickUpdate = async (req, res) => {
         //Log error.message
         res.status(500).send({ error: "An error occured while updating the record." });
       } else {
-        res.send(`Record updated for ${studentAdmNo} successfully.`);
+        res.status(200).json({ status: 200, message: `Record updated for ${studentAdmNo} successfully.` });
       }
     }
   );
@@ -206,7 +201,7 @@ export const staffFullEntry = async (req, res) => {
       if (error) {
         res.status(500).send("Error updating the record.");
       } else {
-        res.send(`Record updated for ${idNo} successfully.`);
+        res.status(200).send({ message: `Record updated for ${idNo} successfully.` });
       }
     }
   );
@@ -227,7 +222,7 @@ export const staffQuickUpdate = async (req, res) => {
       if (error) {
         res.status(500).send(`Error updating the record.Message : ${error} `);
       } else {
-        res.send(`Record updated for ${idNo} successfully.`);
+        res.status(200).send({ message: `Record updated for ${idNo} successfully.` });
       }
     }
   );
@@ -309,6 +304,10 @@ export const getStaffData = (req, res) => {
 
 // Endpoint to update report data
 export const updateReport = async (req, res) => {
+  // When I wrote this function - Only God and I could understand it
+  // Now only God understands it.
+  // If you're trying to optimize this block - Please add to the counter and move on
+  // Wasted Hours - 13
   try {
     const rows = await new Promise((resolve, reject) => {
       db.all(
@@ -429,10 +428,9 @@ export const updateReport = async (req, res) => {
       });
     });
 
-    res.json({ status: "successful" });
+    res.status(200).json({ status: 200, message: "Successfully updated the report" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ status: "Error" });
+    res.status(500).json({ message: "Error" });
   }
 };
 
@@ -578,9 +576,8 @@ export const newStudents = async (req, res) => {
     });
   });
 
-  res.send({
-    status: 200,
-    message: "Database has been updated",
+  res.status(201).send({
+    message: "New student details have been created",
   });
 };
 
@@ -598,7 +595,7 @@ export const getDiseaseNames = (req, res) => {
       });
       return obj;
     });
-    res.json(data);
+    res.status(200).json(data);
   });
 };
 
@@ -618,7 +615,7 @@ export const getReportData = (req, res) => {
       });
       return obj;
     });
-    res.json(data);
+    res.status(200).json(data);
   });
 };
 

@@ -8,7 +8,7 @@ import morgan from "morgan";
 import moment from "moment-timezone";
 import express from "express";
 
-const app = express();
+export const app = express();
 
 app.use(cors());
 app.use(express.json());
@@ -31,6 +31,12 @@ app.listen(KEYS.PORT, () => {
       console.error("No write permission");
     }
   });
+
+  //Create logs folder
+  const logsFolder = "logs";
+  if(!fs.existsSync(logsFolder)){
+    fs.mkdirSync(logsFolder,{recursive: true});
+  }
 
   fs.writeFile(`./logs/${startOfToday}.log`, "", (err) => {
     if (err) {
