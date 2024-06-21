@@ -1,4 +1,4 @@
-import { validationResult, check } from 'express-validator';
+import { validationResult, check } from "express-validator";
 import express, { json } from "express";
 const app = express();
 import cors from "cors";
@@ -40,7 +40,9 @@ export const getStudentByAdmissionNumber = async (req, res) => {
   // Validate admissionNumber input
   const validationRules = [
     // Rule to check if admissionNumber is a number
-    check('admissionNumber').isNumeric().withMessage('Invalid admission number'),
+    check("admissionNumber")
+      .isNumeric()
+      .withMessage("Invalid admission number"),
   ];
 
   // Validate the input
@@ -58,7 +60,9 @@ export const getStudentByAdmissionNumber = async (req, res) => {
         // Log the error to a file
         console.error(err);
         // Send generic response for database disconnection error
-        res.status(500).json({ error: "An error occurred. Please try again later" });
+        res
+          .status(500)
+          .json({ error: "An error occurred. Please try again later" });
         return;
       }
       if (!rows || rows.length === 0) {
@@ -85,31 +89,52 @@ export const studentFullEntry = async (req, res) => {
    */
   try {
     if (req?.body !== null && req?.body !== undefined) {
-      const { studentAdmNo, tempReading, complain, ailment, medication } = req.body;
+      const { studentAdmNo, tempReading, complain, ailment, medication } =
+        req.body;
 
       //Validate input data
-      if (!studentAdmNo || !tempReading || !complain || !ailment || !medication) {
-        res.status(400).json({ error: "Invalid input data" })
-        return
+      if (
+        !studentAdmNo ||
+        !tempReading ||
+        !complain ||
+        !ailment ||
+        !medication
+      ) {
+        res.status(400).json({ error: "Invalid input data" });
+        return;
       }
       // Timestamp
       // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
       // Update record where student admno matches studentAdmNo
       const query = `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=? WHERE admNo=?`;
-      const values = [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo];
+      const values = [
+        tempReading,
+        complain,
+        ailment,
+        medication,
+        moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
+        studentAdmNo,
+      ];
       //Regular function is used instead of arrow function to be able to access `this` within the function
       db.run(query, values, function (error) {
         if (error) {
           // console.error(error.message);
-          res.status(500).send("An error occurred while processing the request.");
+          res
+            .status(500)
+            .send("An error occurred while processing the request.");
         } else {
           //Should only return if rows are updated
           if (this.changes === 0) {
             res.status(204).send("No rows were updated.");
           } else {
             //Status 200 - Success
-            res.status(200).json({status:200, message: `Record updated for ${studentAdmNo} successfully. ${new Date().toISOString().replace(/T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, "")} `});
+            res.status(200).json({
+              status: 200,
+              message: `Record updated for ${studentAdmNo} successfully. ${new Date()
+                .toISOString()
+                .replace(/T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, "")} `,
+            });
           }
         }
       });
@@ -125,8 +150,8 @@ export const studentQuickUpdate = async (req, res) => {
 
   //Validate input
   if (!studentAdmNo || !tempReading) {
-    res.status(400).json({ error: "Invalid input data" })
-    return
+    res.status(400).json({ error: "Invalid input data" });
+    return;
   }
   // Timestamp
   // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
@@ -134,13 +159,22 @@ export const studentQuickUpdate = async (req, res) => {
   // Update record where student admission number matches studentAdmNo
   db.run(
     `UPDATE ${studentTableName} SET tempReading =?, timestamp =? WHERE admNo =? `,
-    [tempReading, new Date().toISOString(), studentAdmNo],
+    [
+      tempReading,
+      moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
+      studentAdmNo,
+    ],
     (error) => {
       if (error) {
         //Log error.message
-        res.status(500).send({ error: "An error occured while updating the record." });
+        res
+          .status(500)
+          .send({ error: "An error occured while updating the record." });
       } else {
-        res.status(200).json({status: 200, message:`Record updated for ${studentAdmNo} successfully.`});
+        res.status(200).json({
+          status: 200,
+          message: `Record updated for ${studentAdmNo} successfully.`,
+        });
       }
     }
   );
@@ -196,12 +230,21 @@ export const staffFullEntry = async (req, res) => {
   // Update record where staff Kenyan id No matches idNo
   db.run(
     `UPDATE ${staffTableName} SET tempReading =?, complain =?, ailment =?, medication =?, timestamp =? WHERE idNo =? `,
-    [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), idNo],
+    [
+      tempReading,
+      complain,
+      ailment,
+      medication,
+      moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
+      idNo,
+    ],
     (error) => {
       if (error) {
         res.status(500).send("Error updating the record.");
       } else {
-        res.status(200).send({message: `Record updated for ${idNo} successfully.`});
+        res
+          .status(200)
+          .send({ message: `Record updated for ${idNo} successfully.` });
       }
     }
   );
@@ -217,12 +260,18 @@ export const staffQuickUpdate = async (req, res) => {
   // Update record where staff idNo matches idNo
   db.run(
     `UPDATE ${staffTableName} SET tempReading =?, timestamp =? WHERE idNo =? `,
-    [tempReading, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), idNo],
+    [
+      tempReading,
+      moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
+      idNo,
+    ],
     (error) => {
       if (error) {
         res.status(500).send(`Error updating the record.Message : ${error} `);
       } else {
-        res.status(200).send({message: `Record updated for ${idNo} successfully.`});
+        res
+          .status(200)
+          .send({ message: `Record updated for ${idNo} successfully.` });
       }
     }
   );
@@ -304,133 +353,177 @@ export const getStaffData = (req, res) => {
 
 // Endpoint to update report data
 export const updateReport = async (req, res) => {
-  // When I wrote this function - Only God and I could understand it
-  // Now only God understands it.
-  // If you're trying to optimize this block - Please add to the counter and move on
-  // Wasted Hours - 13
-  try {
-    const rows = await new Promise((resolve, reject) => {
-      db.all(
-        `SELECT staffRecordID AS recordID, idNo AS admNo, fName, sName, NULL AS class, tempReading, complain, ailment, medication, timestamp
-        FROM ${staffTableName}
-          UNION
-        SELECT recordID, admNo, fName, sName, class, tempReading, complain, ailment, medication, timestamp
-        FROM ${studentTableName} `,
-        [],
-        (err, rows) => {
-          if (err) {
-            console.error(err.message);
-            reject(err);
-          } else {
-            resolve(rows);
-          }
-        }
-      );
-    });
+  const resetReportTable = async () => {
+    // Get the last day of the month to determine the number of days in the current month
+    const lastDayOfMonth = moment().endOf("month").date();
+    const batchSQLResetStatements = [];
 
-    const data = rows.map((row) => {
-      const obj = {};
-      Object.keys(row).forEach((key) => {
-        obj[key] = row[key];
-      });
-      return obj;
-    });
-
-    let filteredData = [];
-    const startOfToday = moment().startOf("day");
-    const endOfToday = moment().endOf("day");
-
-    for (let i = 0; i < data.length; i++) {
-      const dateToBeChecked = moment(data[i].timestamp, "YYYY-MM-DD HH:mm:ss");
-      if (dateToBeChecked.isBetween(startOfToday, endOfToday)) {
-        filteredData.push(data[i]);
-      }
-
+    // Construct batch update statements to reset all days' columns to 0
+    for (let day = 1; day <= lastDayOfMonth; day++) {
+      const sqlResetReportTable = `UPDATE ${reportTableName} SET "${day}" = 0`;
+      batchSQLResetStatements.push(sqlResetReportTable);
     }
 
-    const ailmentsChecked = await loadData();
-    const countByAilment = {};
-
-    ailmentsChecked.forEach((eachAilment) => {
-      const count = filteredData.filter(
-        (item) => item.ailment === eachAilment
-      ).length;
-      countByAilment[eachAilment] = count;
-    });
-
-    const todayAsANumber = moment().date();
-
-
-    const updatePromises = [];
-    for (const eachAilmentToUpdate in countByAilment) {
-      if (countByAilment.hasOwnProperty(eachAilmentToUpdate)) {
-        const updateValue = countByAilment[eachAilmentToUpdate];
-        const sqlUpdateReportTable = `UPDATE ${reportTableName} 
-          SET "${todayAsANumber}" = ${updateValue}
-          WHERE disease = "${eachAilmentToUpdate}"`;
-
-        const updatePromise = new Promise((resolve, reject) => {
-          db.run(sqlUpdateReportTable, (error) => {
-            if (error) {
-              console.error(
-                "SQLITE STATEMENT EXECUTION STATEMENT ERROR : " + error.message
-              );
-              reject(error);
-            } else {
-              // console.log(`Updated ${ eachAilmentToUpdate } with ${ updateValue } for this day of the month: ${ todayAsANumber } `);
-              resolve();
-            }
-          });
-        });
-
-        updatePromises.push(updatePromise);
-      }
-    }
-
-    await Promise.all(updatePromises);
-
-    const dateTomorrow = moment().add(1, "day");
-    const dateEndOfMonth = moment().endOf("month");
-    let startingDate = dateTomorrow.clone();
-    let batchSQLRevertStatements = [];
-
-    while (startingDate.isSameOrBefore(dateEndOfMonth, "day")) {
-      const columnNumber = startingDate.format("DD");
-      const sqlRevertValues = `UPDATE ${reportTableName} 
-        SET "${columnNumber}" = 0`;
-
-      batchSQLRevertStatements.push(sqlRevertValues);
-      startingDate.add(1, "day");
-    }
-
+    // Execute the batch update statements within a transaction
     await new Promise((resolve, reject) => {
       db.serialize(() => {
         db.run("BEGIN TRANSACTION;");
-        batchSQLRevertStatements.forEach((eachSQLStatement) => {
-          db.run(eachSQLStatement, (error) => {
-            if (error) {
-              console.error("BATCH TRANSACTION ERROR: " + error.message);
-              reject(error);
-            } else {
-              // console.error("BATCH TRANSACTION FOR " + eachSQLStatement + " EXECUTED");
+        batchSQLResetStatements.forEach((sql) => {
+          db.run(sql, (err) => {
+            if (err) {
+              console.error("SQLITE STATEMENT EXECUTION ERROR: " + err.message);
+              db.run("ROLLBACK;", () => {
+                reject(err);
+              });
             }
           });
         });
-
-        db.run("COMMIT;", (error) => {
-          if (error) {
-            console.error("BATCH TRANSACTION COMMIT ERROR: " + error.message);
-            reject(error);
+        db.run("COMMIT;", (err) => {
+          if (err) {
+            console.error("BATCH TRANSACTION COMMIT ERROR: " + err.message);
+            reject(err);
           } else {
+            console.log("Report table reset successfully");
             resolve();
           }
         });
       });
     });
+  };
 
-    res.status(200).json({ status: 200, message: "Successfully updated the report" });
+  try {
+    // Fetch all rows from both staff and student tables
+    // Calculate the timestamp for 24 hours ago
+    const twentyFourHoursAgo = moment()
+      .subtract(24, "hours")
+      .format("YYYY-MM-DD HH:mm:ss");
+
+    // Fetch all rows from both staff and student tables within the last 24 hours
+    const rows = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT staffRecordID AS recordID, idNo AS admNo, fName, sName, NULL AS class, tempReading, complain, ailment, medication, timestamp
+      FROM ${staffTableName}
+      WHERE timestamp >= ?
+      UNION
+      SELECT recordID, admNo, fName, sName, class, tempReading, complain, ailment, medication, timestamp
+      FROM ${studentTableName}
+      WHERE timestamp >= ?`,
+        [twentyFourHoursAgo, twentyFourHoursAgo],
+        (err, rows) => {
+          if (err) {
+            console.error(err.message);
+            return reject(err);
+          }
+          resolve(rows);
+        }
+      );
+    });
+
+    const todayAsANumber = moment().date();
+
+    await resetReportTable();
+    for (const record of rows) {
+      const { ailment, timestamp } = record;
+      const dateToBeChecked = moment(timestamp, "YYYY-MM-DD HH:mm:ss");
+
+      // Check if the record is within the last 24 hours
+      if (dateToBeChecked.isAfter(moment().subtract(24, "hours"))) {
+        // Update the report table for the specific ailment
+        const sqlUpdateReportTable = `UPDATE ${reportTableName} 
+        SET "${todayAsANumber}" = "${todayAsANumber}" + 1
+        WHERE disease = "${ailment}"`;
+
+        await new Promise((resolve, reject) => {
+          db.run(sqlUpdateReportTable, (err) => {
+            if (err) {
+              console.error("SQLITE STATEMENT EXECUTION ERROR: " + err.message);
+              return reject(err);
+            }
+            console.log(`Updated report for ailment ${ailment}`);
+            resolve();
+          });
+        });
+      }
+    }
+
+    // // Filter data to only include today's records
+    // const startOfToday = moment().startOf("day");
+    // const endOfToday = moment().endOf("day");
+
+    // const filteredData = rows.filter((row) => {
+    //   const dateToBeChecked = moment(row.timestamp, "YYYY-MM-DD HH:mm:ss");
+    //   return row.timestamp.isBetween(startOfToday, endOfToday);
+    // });
+
+    // Load ailment data
+    // const ailmentsChecked = await loadData();
+    // const countByAilment = ailmentsChecked.reduce((acc, ailment) => {
+    //   const count = filteredData.filter(
+    //     (item) => item.ailment === ailment
+    //   ).length;
+    //   acc[ailment] = count;
+    //   return acc;
+    // }, {});
+
+    // const todayAsANumber = moment().date();
+
+    // // Update the report table with today's data
+    // await Promise.all(
+    //   Object.entries(countByAilment).map(([ailment, count]) => {
+    //     const sqlUpdateReportTable = `UPDATE ${reportTableName}
+    //     SET "${todayAsANumber}" = ${count}
+    //     WHERE disease = "${ailment}"`;
+    //     return new Promise((resolve, reject) => {
+    //       db.run(sqlUpdateReportTable, (err) => {
+    //         if (err) {
+    //           console.error("SQLITE STATEMENT EXECUTION ERROR: " + err.message);
+    //           return reject(err);
+    //         }
+    //         resolve();
+    //       });
+    //     });
+    //   })
+    // );
+
+    // // Revert future days' data to 0
+    // const batchSQLRevertStatements = [];
+    // let startingDate = moment().add(1, "day");
+    // const dateEndOfMonth = moment().endOf("month");
+
+    // while (startingDate.isSameOrBefore(dateEndOfMonth, "day")) {
+    //   const columnNumber = startingDate.format("DD");
+    //   const sqlRevertValues = `UPDATE ${reportTableName} SET "${columnNumber}" = 0`;
+    //   batchSQLRevertStatements.push(sqlRevertValues);
+    //   startingDate.add(1, "day");
+    // }
+
+    // await new Promise((resolve, reject) => {
+    //   db.serialize(() => {
+    //     db.run("BEGIN TRANSACTION;");
+    //     batchSQLRevertStatements.forEach((sql) => {
+    //       db.run(sql, (err) => {
+    //         if (err) {
+    //           console.error("BATCH TRANSACTION ERROR: " + err.message);
+    //           return reject(err);
+    //         }
+    //       });
+    //     });
+    //     db.run("COMMIT;", (err) => {
+    //       if (err) {
+    //         console.error("BATCH TRANSACTION COMMIT ERROR: " + err.message);
+    //         return reject(err);
+    //       }
+    //       resolve();
+    //     });
+    //   });
+    // });
+
+    res
+      .status(200)
+      .json({ status: 200, message: "Successfully updated the report" });
   } catch (error) {
-    res.status(500).json({ message: "Error" });
+    console.error("UPDATE REPORT ERROR: " + error.message);
+    res.status(500).json({ message: "Error updating report" });
   }
 };
 
@@ -523,10 +616,10 @@ export const generateExcel = (req, res) => {
               if (error) {
                 res.status(500).json({
                   error: 500,
-                  message: "Error generating Excel file!"
-                })
+                  message: "Error generating Excel file!",
+                });
               }
-            })
+            });
           });
       } catch (error) {
         res.send({
