@@ -1,0 +1,7 @@
+;Build Image
+docker build -t briomarftw/san-code:1.0 .
+
+;Run container by exposing the port
+docker run -p 4500:6969 ( LOCAL:CONTAINER ) bf29c25c91d7 ( IMAGE ID)
+
+;Volume to update container on change
