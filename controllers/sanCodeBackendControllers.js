@@ -398,12 +398,13 @@ export const getStaffData = (req, res) => {
 // Endpoint to update report data
 export const updateReport = async (req, res) => {
   const resetReportTable = async () => {
+    const today = moment().date();
     // Get the last day of the month to determine the number of days in the current month
     const lastDayOfMonth = moment().endOf("month").date();
     const batchSQLResetStatements = [];
 
     // Construct batch update statements to reset all days' columns to 0
-    for (let day = 1; day <= lastDayOfMonth; day++) {
+    for (let day = today; day <= lastDayOfMonth; day++) {
       const sqlResetReportTable = `UPDATE ${reportTableName} SET "${day}" = 0`;
       batchSQLResetStatements.push(sqlResetReportTable);
     }
