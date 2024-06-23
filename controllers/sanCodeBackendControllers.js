@@ -74,6 +74,30 @@ export const getStudentByAdmissionNumber = async (req, res) => {
   );
 };
 
+// Endpoint to get students going to the hospital
+export const getStudentsGoingToHospital = async (req, res) => {
+  db.all(
+    `SELECT * FROM ${studentTableName} WHERE going_to_hospital=?`,
+    [1],
+    (err, rows) => {
+      if (err) {
+        console.error(err);
+        res
+          .status(500)
+          .json({ error: "An error occurred. Please try again later" });
+        return;
+      }
+
+      if (!rows || rows.length === 0) {
+        res.status(404).json({ error: "No student data" });
+        return;
+      }
+
+      res.json(rows);
+    }
+  );
+};
+
 // Endpoint to accept data from the full entry submission
 export const studentFullEntry = async (req, res) => {
   /*
@@ -89,8 +113,14 @@ export const studentFullEntry = async (req, res) => {
    */
   try {
     if (req?.body !== null && req?.body !== undefined) {
-      const { studentAdmNo, tempReading, complain, ailment, medication } =
-        req.body;
+      const {
+        studentAdmNo,
+        tempReading,
+        complain,
+        ailment,
+        medication,
+        going_to_hospital,
+      } = req.body;
 
       //Validate input data
       if (
@@ -98,7 +128,8 @@ export const studentFullEntry = async (req, res) => {
         !tempReading ||
         !complain ||
         !ailment ||
-        !medication
+        !medication ||
+        going_to_hospital == undefined
       ) {
         res.status(400).json({ error: "Invalid input data" });
         return;
@@ -107,12 +138,13 @@ export const studentFullEntry = async (req, res) => {
       // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
       // Update record where student admno matches studentAdmNo
-      const query = `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=? WHERE admNo=?`;
+      const query = `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, going_to_hospital=?, timestamp=? WHERE admNo=?`;
       const values = [
         tempReading,
         complain,
         ailment,
         medication,
+        going_to_hospital ? 1 : 0,
         moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
         studentAdmNo,
       ];
@@ -146,10 +178,17 @@ export const studentFullEntry = async (req, res) => {
 
 // Endpoint to accept data from the quick update submission
 export const studentQuickUpdate = async (req, res) => {
-  const { studentAdmNo, tempReading } = req.body;
+  const { studentAdmNo, tempReading, complain, ailment, going_to_hospital } =
+    req.body;
 
   //Validate input
-  if (!studentAdmNo || !tempReading) {
+  if (
+    !studentAdmNo ||
+    !tempReading ||
+    !complain ||
+    !ailment ||
+    going_to_hospital == undefined
+  ) {
     res.status(400).json({ error: "Invalid input data" });
     return;
   }
@@ -158,9 +197,12 @@ export const studentQuickUpdate = async (req, res) => {
 
   // Update record where student admission number matches studentAdmNo
   db.run(
-    `UPDATE ${studentTableName} SET tempReading =?, timestamp =? WHERE admNo =? `,
+    `UPDATE ${studentTableName} SET tempReading =?, complain =?, ailment=?, going_to_hospital=?, timestamp =? WHERE admNo =? `,
     [
       tempReading,
+      complain,
+      ailment,
+      going_to_hospital ? 1 : 0,
       moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
       studentAdmNo,
     ],
@@ -252,16 +294,18 @@ export const staffFullEntry = async (req, res) => {
 
 // Endpoint to accept data from the quick update submission for a staff member
 export const staffQuickUpdate = async (req, res) => {
-  const { idNo, tempReading } = req.body;
+  const { idNo, tempReading, complain, ailment } = req.body;
 
   // Timestamp
   // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
   // Update record where staff idNo matches idNo
   db.run(
-    `UPDATE ${staffTableName} SET tempReading =?, timestamp =? WHERE idNo =? `,
+    `UPDATE ${staffTableName} SET tempReading =?, complain=?, ailment=?, timestamp =? WHERE idNo =? `,
     [
       tempReading,
+      complain,
+      ailment,
       moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
       idNo,
     ],
@@ -631,44 +675,40 @@ export const generateExcel = (req, res) => {
   );
 };
 
-//Endpoint to post new student details
+// Endpoint to post new student details
 export const newStudents = async (req, res) => {
-  //Binding to hold onto the array with student details
-  const arrayWithStudentDetails = req.body;
+  // Binding to hold onto the array with student details
+  const arrayWithStudentDetails = req?.body?.body;
 
-  //We'll insert this data into the database
+  console.log(arrayWithStudentDetails);
 
-  //Insert prepared statement
-  const insertQuery = `INSERT INTO ${studentTableName} (fName, sName, admNo, class) VALUES(?,?,?,?)`;
-  const selectQuery = `SELECT COUNT(*) as count from ${studentTableName} WHERE admNo=?`;
+  // Insert prepared statement
+  const insertQuery = `INSERT INTO ${studentTableName} (admNo, fName, sName, class) VALUES(?,?,?,?)`;
+  const selectQuery = `SELECT COUNT(*) as count FROM ${studentTableName} WHERE admNo=?`;
 
-  arrayWithStudentDetails.forEach((eachItem) => {
+  for (const eachItem of arrayWithStudentDetails) {
+    if (!eachItem[1]) continue; // Skip if Adm No is null
+
     // Check if the record exists
-    db.get(selectQuery, [eachItem[2]], (error, result) => {
-      // Catch an expected error
-      if (error) {
-        console.error("There's been an error. Details:", error);
-        return;
-      }
-
+    try {
+      const result = db.get(selectQuery, [eachItem[1]]);
       // If there's no match or result.count is undefined, run the insert query
       if (result.count === 0 || typeof result.count === "undefined") {
-        db.run(insertQuery, eachItem, (error) => {
-          if (error) {
-            console.error("Error inserting data:", error);
-          }
-
-          // Log to show data has been inserted
-          console.log(`Row inserted with the Admission Number: ${eachItem[2]}`);
-        });
+        db.run(insertQuery, [
+          eachItem[1], // Adm No
+          eachItem[2], // First Name
+          eachItem[3], // Second Name
+        ]);
+        console.log(`Row inserted with the Admission Number: ${eachItem[1]}`);
       } else {
         console.log(
-          `Skipping insertion for admNo ${eachItem[2]} as it already exists.`
+          `Skipping insertion for admNo ${eachItem[1]} as it already exists.`
         );
       }
-    });
-  });
-
+    } catch (error) {
+      console.error("There's been an error. Details:", error);
+    }
+  }
   res.status(201).send({
     message: "New student details have been created",
   });

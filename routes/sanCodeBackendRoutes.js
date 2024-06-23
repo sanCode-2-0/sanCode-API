@@ -10,6 +10,7 @@ import {
   getStaffMemberByID,
   getStudentByAdmissionNumber,
   getStudentData,
+  getStudentsGoingToHospital,
   newStudents,
   staffFullEntry,
   staffQuickUpdate,
@@ -23,6 +24,8 @@ const router = Router();
 router.route("/").get(defaultResponse);
 
 router.route("/students/:admissionNumber").get(getStudentByAdmissionNumber);
+
+router.route("/students-going-to-hospital").get(getStudentsGoingToHospital);
 
 router.route("/student-full-entry").post(studentFullEntry);
 
@@ -44,7 +47,7 @@ router.route("/update-report").get(updateReport);
 
 router.route("/generate-excel").get(generateExcel);
 
-router.route("/new-students").get(newStudents);
+router.route("/new-students").post(newStudents);
 
 router.route("/disease").get(getDiseaseNames);
 
