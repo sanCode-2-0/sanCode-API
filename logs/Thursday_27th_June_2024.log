@@ -1,0 +1,6 @@
+::1 - - [27/Jun/2024:13:13:18 +0000] "POST /new-students HTTP/1.1" 200 58 "http://localhost:3000/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+::1 - - [27/Jun/2024:13:13:29 +0000] "POST /new-students HTTP/1.1" 200 58 "http://localhost:3000/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+::1 - - [27/Jun/2024:13:13:43 +0000] "POST /new-students HTTP/1.1" 200 58 "http://localhost:3000/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+::1 - - [27/Jun/2024:13:15:35 +0000] "GET /students-going-to-hospital HTTP/1.1" 404 27 "http://localhost:3000/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+::1 - - [27/Jun/2024:13:15:35 +0000] "GET /students-going-to-hospital HTTP/1.1" 404 27 "http://localhost:3000/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+::1 - - [27/Jun/2024:13:15:38 +0000] "GET /students/16124 HTTP/1.1" 200 242 "http://localhost:3000/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"

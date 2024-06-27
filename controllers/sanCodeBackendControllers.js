@@ -679,39 +679,94 @@ export const generateExcel = (req, res) => {
 // Endpoint to post new student details
 export const newStudents = async (req, res) => {
   // Binding to hold onto the array with student details
-  const arrayWithStudentDetails = req?.body?.body;
+  // Convert string to array
+  let arrayWithStudentDetails = req?.body?.body;
+  arrayWithStudentDetails = JSON.parse(arrayWithStudentDetails);
 
-  console.log(arrayWithStudentDetails);
+  // Example
+  // [["First Name","Second Name","Adm No.","Class"],["IBRAHIM","OITAYU","15586","1A"],["MAZURI","ABEL","15596","1A"],["NDEGWA","MICHAEL","15606","1A"],["MWANGI","OSTEEN","15616","1A"],["ODHIAMBO","VICTOR","15626","1A"],["MAX","KAINGU","15636","1A"],["KURIA","ROBERT","15646","1A"],["MWANGI","TAL","15656","1A"],["MUTUA","ELVIS","15666","1A"],["KYALO","STANLEY","15676","1A"],["DENNIS","ABRAHAM","15686","1A"],["MUGUNA","VICTOR","15696","1A"],["ABDULLAHI","HARUN","15706","1A"],["NGALANGE","HOLYFIELD","15716","1A"],["NOAH","MUTIE","15726","1A"],["KIMATHI","TRAVIS","15736","1A"],["RYAN","ODUMA","15746","1A"],
+
+  // Check if the array is empty
+  if (!arrayWithStudentDetails) {
+    res.status(400).send({
+      message: "No student details have been provided",
+    });
+    return;
+  }
+
+  // Check if the array is not an array
+  if (!Array.isArray(arrayWithStudentDetails)) {
+    console.log(typeof arrayWithStudentDetails);
+    res.status(400).send({
+      message: "Student details should be an array",
+    });
+    return;
+  }
+
+  // Check if the array is empty
+  if (arrayWithStudentDetails.length === 0) {
+    res.status(400).send({
+      message: "No student details have been provided",
+    });
+    return;
+  }
+
+  // Check if the array has the correct number of columns
+  if (arrayWithStudentDetails[0].length !== 4) {
+    res.status(400).send({
+      message: "Invalid number of columns in the student details",
+    });
+    return;
+  }
+
+  // Check if the array has the correct column names
+  if (
+    arrayWithStudentDetails[0][0] !== "First Name" ||
+    arrayWithStudentDetails[0][1] !== "Second Name" ||
+    arrayWithStudentDetails[0][2] !== "Adm No." ||
+    arrayWithStudentDetails[0][3] !== "Class"
+  ) {
+    res.status(400).send({
+      message: "Invalid column names in the student details",
+    });
+    return;
+  }
 
   // Insert prepared statement
   const insertQuery = `INSERT INTO ${studentTableName} (admNo, fName, sName, class) VALUES(?,?,?,?)`;
   const selectQuery = `SELECT COUNT(*) as count FROM ${studentTableName} WHERE admNo=?`;
 
-  for (const eachItem of arrayWithStudentDetails) {
-    if (!eachItem[1]) continue; // Skip if Adm No is null
+  // Loop through the array and insert the records
+  for (let i = 1; i < arrayWithStudentDetails.length; i++) {
+    const studentDetails = arrayWithStudentDetails[i];
+    const admNo = studentDetails[2];
+    const fName = studentDetails[0];
+    const sName = studentDetails[1];
+    const studentClass = studentDetails[3];
 
-    // Check if the record exists
-    try {
-      const result = db.get(selectQuery, [eachItem[1]]);
-      // If there's no match or result.count is undefined, run the insert query
-      if (result.count === 0 || typeof result.count === "undefined") {
-        db.run(insertQuery, [
-          eachItem[1], // Adm No
-          eachItem[2], // First Name
-          eachItem[3], // Second Name
-        ]);
-        console.log(`Row inserted with the Admission Number: ${eachItem[1]}`);
-      } else {
-        console.log(
-          `Skipping insertion for admNo ${eachItem[1]} as it already exists.`
-        );
-      }
-    } catch (error) {
-      console.error("There's been an error. Details:", error);
+    // Check if the student exists
+    const count = await new Promise((resolve, reject) => {
+      db.get(selectQuery, [admNo], (err, row) => {
+        if (err) {
+          console.error(err.message);
+          reject(err);
+        }
+        resolve(row.count);
+      });
+    });
+
+    // If the student does not exist, insert the student
+    if (count === 0) {
+      db.run(insertQuery, [admNo, fName, sName, studentClass], (err) => {
+        if (err) {
+          console.error(err.message);
+        }
+      });
     }
   }
-  res.status(201).send({
-    message: "New student details have been created",
+
+  res.status(200).send({
+    message: "Student details have been successfully added",
   });
 };
 
