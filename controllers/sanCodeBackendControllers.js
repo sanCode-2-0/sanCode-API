@@ -399,11 +399,9 @@ export const getStaffData = (req, res) => {
 export const updateReport = async (req, res) => {
   const resetReportTable = async () => {
     const today = moment().date();
-    // Get the last day of the month to determine the number of days in the current month
     const lastDayOfMonth = moment().endOf("month").date();
     const batchSQLResetStatements = [];
 
-    // Construct batch update statements to reset all days' columns to 0
     for (let day = today; day <= lastDayOfMonth; day++) {
       const sqlResetReportTable = `UPDATE ${reportTableName} SET "${day}" = 0`;
       batchSQLResetStatements.push(sqlResetReportTable);
@@ -437,22 +435,19 @@ export const updateReport = async (req, res) => {
   };
 
   try {
-    // Fetch all rows from both staff and student tables
-    // Calculate the timestamp for 24 hours ago
     const twentyFourHoursAgo = moment()
       .subtract(24, "hours")
       .format("YYYY-MM-DD HH:mm:ss");
 
-    // Fetch all rows from both staff and student tables within the last 24 hours
     const rows = await new Promise((resolve, reject) => {
       db.all(
         `SELECT staffRecordID AS recordID, idNo AS admNo, fName, sName, NULL AS class, tempReading, complain, ailment, medication, timestamp
-      FROM ${staffTableName}
-      WHERE timestamp >= ?
-      UNION
-      SELECT recordID, admNo, fName, sName, class, tempReading, complain, ailment, medication, timestamp
-      FROM ${studentTableName}
-      WHERE timestamp >= ?`,
+        FROM ${staffTableName}
+        WHERE timestamp >= ?
+        UNION
+        SELECT recordID, admNo, fName, sName, class, tempReading, complain, ailment, medication, timestamp
+        FROM ${studentTableName}
+        WHERE timestamp >= ?`,
         [twentyFourHoursAgo, twentyFourHoursAgo],
         (err, rows) => {
           if (err) {
@@ -467,101 +462,34 @@ export const updateReport = async (req, res) => {
     const todayAsANumber = moment().date();
 
     await resetReportTable();
-    for (const record of rows) {
-      const { ailment, timestamp } = record;
-      const dateToBeChecked = moment(timestamp, "YYYY-MM-DD HH:mm:ss");
 
-      // Check if the record is within the last 24 hours
-      if (dateToBeChecked.isAfter(moment().subtract(24, "hours"))) {
-        // Update the report table for the specific ailment
-        const sqlUpdateReportTable = `UPDATE ${reportTableName} 
+    // Use=ing Promise.all to ensure all updates are completed before responding
+    await Promise.all(
+      rows.map(async (record) => {
+        const { ailment, timestamp } = record;
+        const dateToBeChecked = moment(timestamp, "YYYY-MM-DD HH:mm:ss");
+
+        if (dateToBeChecked.isAfter(moment().subtract(24, "hours"))) {
+          const sqlUpdateReportTable = `UPDATE ${reportTableName} 
         SET "${todayAsANumber}" = "${todayAsANumber}" + 1
         WHERE disease = "${ailment}"`;
 
-        await new Promise((resolve, reject) => {
-          db.run(sqlUpdateReportTable, (err) => {
-            if (err) {
-              console.error("SQLITE STATEMENT EXECUTION ERROR: " + err.message);
-              return reject(err);
-            }
-            console.log(`Updated report for ailment ${ailment}`);
-            resolve();
+          await new Promise((resolve, reject) => {
+            db.run(sqlUpdateReportTable, (err) => {
+              if (err) {
+                console.error(
+                  "SQLITE STATEMENT EXECUTION ERROR: " + err.message
+                );
+                reject(err);
+              } else {
+                console.log(`Updated report for ailment ${ailment}`);
+                resolve();
+              }
+            });
           });
-        });
-      }
-    }
-
-    // // Filter data to only include today's records
-    // const startOfToday = moment().startOf("day");
-    // const endOfToday = moment().endOf("day");
-
-    // const filteredData = rows.filter((row) => {
-    //   const dateToBeChecked = moment(row.timestamp, "YYYY-MM-DD HH:mm:ss");
-    //   return row.timestamp.isBetween(startOfToday, endOfToday);
-    // });
-
-    // Load ailment data
-    // const ailmentsChecked = await loadData();
-    // const countByAilment = ailmentsChecked.reduce((acc, ailment) => {
-    //   const count = filteredData.filter(
-    //     (item) => item.ailment === ailment
-    //   ).length;
-    //   acc[ailment] = count;
-    //   return acc;
-    // }, {});
-
-    // const todayAsANumber = moment().date();
-
-    // // Update the report table with today's data
-    // await Promise.all(
-    //   Object.entries(countByAilment).map(([ailment, count]) => {
-    //     const sqlUpdateReportTable = `UPDATE ${reportTableName}
-    //     SET "${todayAsANumber}" = ${count}
-    //     WHERE disease = "${ailment}"`;
-    //     return new Promise((resolve, reject) => {
-    //       db.run(sqlUpdateReportTable, (err) => {
-    //         if (err) {
-    //           console.error("SQLITE STATEMENT EXECUTION ERROR: " + err.message);
-    //           return reject(err);
-    //         }
-    //         resolve();
-    //       });
-    //     });
-    //   })
-    // );
-
-    // // Revert future days' data to 0
-    // const batchSQLRevertStatements = [];
-    // let startingDate = moment().add(1, "day");
-    // const dateEndOfMonth = moment().endOf("month");
-
-    // while (startingDate.isSameOrBefore(dateEndOfMonth, "day")) {
-    //   const columnNumber = startingDate.format("DD");
-    //   const sqlRevertValues = `UPDATE ${reportTableName} SET "${columnNumber}" = 0`;
-    //   batchSQLRevertStatements.push(sqlRevertValues);
-    //   startingDate.add(1, "day");
-    // }
-
-    // await new Promise((resolve, reject) => {
-    //   db.serialize(() => {
-    //     db.run("BEGIN TRANSACTION;");
-    //     batchSQLRevertStatements.forEach((sql) => {
-    //       db.run(sql, (err) => {
-    //         if (err) {
-    //           console.error("BATCH TRANSACTION ERROR: " + err.message);
-    //           return reject(err);
-    //         }
-    //       });
-    //     });
-    //     db.run("COMMIT;", (err) => {
-    //       if (err) {
-    //         console.error("BATCH TRANSACTION COMMIT ERROR: " + err.message);
-    //         return reject(err);
-    //       }
-    //       resolve();
-    //     });
-    //   });
-    // });
+        }
+      })
+    );
 
     res
       .status(200)
