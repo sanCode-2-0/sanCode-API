@@ -343,12 +343,26 @@ export const getStudentData = (req, res) => {
 
       let filteredData = [];
 
+      // for (let i = 0; i < data.length; i++) {
+      //   const dateToBeChecked = moment(
+      //     data[i].timestamp,
+      //     "YYYY-MM-DD HH:mm:ss"
+      //   );
+      //   if (dateToBeChecked.isBetween(startOfToday, endOfToday)) {
+      //     filteredData.push(data[i]);
+      //   }
+      // }
+
+      // Filter data for the last 7 days
+
       for (let i = 0; i < data.length; i++) {
         const dateToBeChecked = moment(
           data[i].timestamp,
           "YYYY-MM-DD HH:mm:ss"
         );
-        if (dateToBeChecked.isBetween(startOfToday, endOfToday)) {
+
+        // Check if is within the last 7 days
+        if (dateToBeChecked.isBetween(moment().subtract(7, "days"), moment())) {
           filteredData.push(data[i]);
         }
       }
@@ -385,7 +399,8 @@ export const getStaffData = (req, res) => {
           data[i].timestamp,
           "YYYY-MM-DD HH:mm:ss"
         );
-        if (dateToBeChecked.isBetween(startOfToday, endOfToday)) {
+        // Check if is within the last 7 days
+        if (dateToBeChecked.isBetween(moment().subtract(7, "days"), moment())) {
           filteredData.push(data[i]);
         }
       }
