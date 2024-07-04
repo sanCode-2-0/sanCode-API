@@ -55,4 +55,9 @@ router.route("/report").get(getReportData);
 
 router.route("/report-analytics").get(getReportAnalytics);
 
+router.route("/download-sqlite-database").get((req, res) => {
+  // C:\Users\Briane\source\repos\sanCode-API\database\san-code.sqlite
+  res.download("./database/san-code.sqlite");
+});
+
 export default router;
