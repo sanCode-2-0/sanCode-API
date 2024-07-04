@@ -321,11 +321,13 @@ export const staffQuickUpdate = async (req, res) => {
   );
 };
 
-// Endpoint to fetch today's student data for purposes of the nurse filtering
+// Endpoint to fetch this week's student data for purposes of the nurse filtering
 export const getStudentData = (req, res) => {
+  // Select all of this week's student data
+  // timestamp : 2024-07-04 22:54:33
   db.all(
-    `SELECT * FROM ${studentTableName} ORDER BY timestamp DESC`,
-    [],
+    `SELECT * FROM ${studentTableName} WHERE timestamp >= ? AND ailment != "" ORDER BY timestamp DESC`,
+    [moment().subtract(7, "days").format("YYYY-MM-DD HH:mm:ss")],
     (err, rows) => {
       if (err) {
         console.error(err.message);
@@ -336,38 +338,16 @@ export const getStudentData = (req, res) => {
       const data = rows.map((row) => {
         const obj = {};
         Object.keys(row).forEach((key) => {
+          // Remove if ailment and medication are empty
           obj[key] = row[key];
+          if (key === "ailment" && row[key] === "") {
+            return;
+          }
         });
         return obj;
       });
 
-      let filteredData = [];
-
-      // for (let i = 0; i < data.length; i++) {
-      //   const dateToBeChecked = moment(
-      //     data[i].timestamp,
-      //     "YYYY-MM-DD HH:mm:ss"
-      //   );
-      //   if (dateToBeChecked.isBetween(startOfToday, endOfToday)) {
-      //     filteredData.push(data[i]);
-      //   }
-      // }
-
-      // Filter data for the last 7 days
-
-      for (let i = 0; i < data.length; i++) {
-        const dateToBeChecked = moment(
-          data[i].timestamp,
-          "YYYY-MM-DD HH:mm:ss"
-        );
-
-        // Check if is within the last 7 days
-        if (dateToBeChecked.isBetween(moment().subtract(7, "days"), moment())) {
-          filteredData.push(data[i]);
-        }
-      }
-
-      res.json(filteredData);
+      res.json(data);
     }
   );
 };
@@ -375,8 +355,8 @@ export const getStudentData = (req, res) => {
 // Endpoint to fetch today's staff data for purposes of the nurse filtering
 export const getStaffData = (req, res) => {
   db.all(
-    `SELECT * FROM ${staffTableName} ORDER BY timestamp DESC`,
-    [],
+    `SELECT * FROM ${staffTableName} WHERE timestamp >= ? AND ailment != "" ORDER BY timestamp DESC`,
+    [moment().subtract(7, "days").format("YYYY-MM-DD HH:mm:ss")],
     (err, rows) => {
       if (err) {
         console.error(err.message);
@@ -387,25 +367,16 @@ export const getStaffData = (req, res) => {
       const data = rows.map((row) => {
         const obj = {};
         Object.keys(row).forEach((key) => {
+          // Remove if ailment and medication are empty
           obj[key] = row[key];
+          if (key === "ailment" && row[key] === "") {
+            return;
+          }
         });
         return obj;
       });
 
-      let filteredData = [];
-
-      for (let i = 0; i < data.length; i++) {
-        const dateToBeChecked = moment(
-          data[i].timestamp,
-          "YYYY-MM-DD HH:mm:ss"
-        );
-        // Check if is within the last 7 days
-        if (dateToBeChecked.isBetween(moment().subtract(7, "days"), moment())) {
-          filteredData.push(data[i]);
-        }
-      }
-
-      res.json(filteredData);
+      res.json(data);
     }
   );
 };
