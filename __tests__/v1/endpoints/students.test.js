@@ -42,6 +42,48 @@ describe("Test GET /students/:admissionNumber", () => {
   });
 });
 
+describe("Test GET /students-going-to-hospital", () => {
+  //Status 200 - Success
+  test("Status 200 - Success", async () => {
+    await request(app).get("/students-going-to-hospital").expect(200);
+  });
+
+  //Properties of response body
+  // [{
+  //     recordID: 1082,
+  //         admNo: 13256,
+  //     fName: 'BRIANE',
+  //     sName: 'LOMONI',
+  //     class: '5D',
+
+  //     tempReading: 35.8,
+  //     complain: 'Fever',
+  //     ailment: 'Fevers',
+  //     medication: 'PCM',
+  //     timestamp: '2023-11-15T17:48:18.254Z',
+  //     tName: null,
+  //     fourthName: null
+  // }]
+  test("Properties of response body", async () => {
+    const response = await request(app).get("/students-going-to-hospital");
+    const responseBody = response._body;
+    for (let counter = 0; counter < responseBody.length; counter++) {
+      expect(responseBody[counter]).toHaveProperty("recordID");
+      expect(responseBody[counter]).toHaveProperty("admNo");
+      expect(responseBody[counter]).toHaveProperty("fName");
+      expect(responseBody[counter]).toHaveProperty("sName");
+      expect(responseBody[counter]).toHaveProperty("class");
+      expect(responseBody[counter]).toHaveProperty("tempReading");
+      expect(responseBody[counter]).toHaveProperty("complain");
+      expect(responseBody[counter]).toHaveProperty("ailment");
+      expect(responseBody[counter]).toHaveProperty("medication");
+      expect(responseBody[counter]).toHaveProperty("timestamp");
+      expect(responseBody[counter]).toHaveProperty("tName");
+      expect(responseBody[counter]).toHaveProperty("fourthName");
+    }
+  });
+});
+
 describe("Test POST /student-full-entry", () => {
   const testPostData = {
     studentAdmNo: testAdmissionNumber,
@@ -76,6 +118,7 @@ describe("Test POST /student-quick-update", () => {
     studentAdmNo: testAdmissionNumber,
     tempReading: 36.7,
     complain: "head",
+    ailment: "headache",
     medication: "pcm",
     going_to_hospital: 1,
   };
@@ -140,15 +183,6 @@ describe("Test GET /student-data", () => {
       expect(responseBody[counter]).toHaveProperty("fourthName");
     }
   });
-});
-
-describe("Test GET /students-going-to-hospital", () => {
-  //Status 200 - Successful
-  test("Status 200 - Successful", async () => {
-    await request(app).get("/students-going-to-hospital").expect(200);
-  });
-
-  // Properties received in JSON
 });
 
 describe("Test GET /update-report", () => {
