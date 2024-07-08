@@ -118,7 +118,6 @@ describe("Test POST /student-quick-update", () => {
     studentAdmNo: testAdmissionNumber,
     tempReading: 36.7,
     complain: "head",
-    ailment: "headache",
     medication: "pcm",
     going_to_hospital: 1,
   };

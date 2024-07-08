@@ -296,7 +296,7 @@ export const studentFullEntry = async (req, res) => {
 
 // Endpoint to accept data from the quick update submission
 export const studentQuickUpdate = async (req, res) => {
-  const { studentAdmNo, tempReading, complain, ailment, going_to_hospital } =
+  const { studentAdmNo, tempReading, complain, medication, going_to_hospital } =
     req.body;
 
   //Validate input
@@ -304,7 +304,7 @@ export const studentQuickUpdate = async (req, res) => {
     !studentAdmNo ||
     !tempReading ||
     !complain ||
-    !ailment ||
+    !medication ||
     going_to_hospital == undefined
   ) {
     res.status(400).json({ error: "Invalid input data" });
@@ -347,7 +347,7 @@ export const studentQuickUpdate = async (req, res) => {
     .update({
       tempReading,
       complain,
-      ailment,
+      medication,
       going_to_hospital: going_to_hospital_value,
       timestamp: moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
     })
@@ -514,7 +514,7 @@ export const staffFullEntry = async (req, res) => {
 
 // Endpoint to accept data from the quick update submission for a staff member
 export const staffQuickUpdate = async (req, res) => {
-  const { idNo, tempReading, complain, ailment } = req.body;
+  const { idNo, tempReading, complain, medication } = req.body;
 
   // Timestamp
   // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
@@ -547,7 +547,7 @@ export const staffQuickUpdate = async (req, res) => {
     .update({
       tempReading,
       complain,
-      ailment,
+      medication,
       timestamp: moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
     })
     .eq("idNo", idNo)

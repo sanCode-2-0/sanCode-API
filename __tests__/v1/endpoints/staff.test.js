@@ -68,6 +68,8 @@ describe("Test POST /staff-quick-update", () => {
   const testPostData = {
     idNo: testIDNumber,
     tempReading: 36.7,
+    complain: "head",
+    medication: "pcm",
   };
 
   //Status 204 - Updated with no meaningful return data
