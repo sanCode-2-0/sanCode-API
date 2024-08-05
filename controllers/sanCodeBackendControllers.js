@@ -370,6 +370,85 @@ export const studentQuickUpdate = async (req, res) => {
   });
 };
 
+//Endpoint to create a new record for a student
+export const createStudentRecord = async (req, res) => {
+  const { admNo, fName, sName, class: className } = req.body;
+
+  //Validate input
+  if (!admNo || !fName || !sName || !className) {
+    res.status(400).json({ error: "Invalid input data" });
+    return;
+  }
+
+  // SUPABASE
+  // Account for the case where the record already exists
+  const { data, error } = await supabase
+    .from(studentTableName)
+    .select("*")
+    .eq("admNo", admNo);
+
+  if (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+    return;
+  }
+
+  if (data.length > 0) {
+    res.status(409).json({ error: "Student record already exists" });
+    return;
+  }
+
+  // Insert a new record for the student
+  const { data: newData, error: newError } = await supabase
+    .from(studentTableName)
+    .insert([{ admNo, fName, sName, class: className }]);
+
+  if (newError) {
+    console.error(newError);
+    res.status(500).send({ error: "Internal Server Error" });
+    return;
+  }
+
+  res.status(200).json({
+    status: 200,
+    message: `Entry created successfully for ${fName}`,
+    admNo,
+    fName,
+  });
+};
+
+// Endpoint to edit a student record for a student
+export const updateStudentRecord = async (req, res) => {
+  const { admNo, fName, sName, class: className } = req.body;
+
+  //Validate input
+  if (!admNo || !fName || !sName || !className) {
+    res.status(400).json({ error: "Invalid input data" });
+    return;
+  }
+
+  // SUPABASE
+  // Update the record for the student
+  const { data, error } = await supabase
+    .from(studentTableName)
+    .update({ fName, sName, class: className })
+    .eq("admNo", admNo)
+    .select();
+
+  if (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+    return;
+  }
+
+  res.status(200).json({
+    status: 200,
+    message: `Record updated successfully for ${fName}`,
+    admNo,
+    fName,
+  });
+};
+
 //Endpoint to validate that staff exists in the database
 export const getStaffMemberByID = async (req, res) => {
   let idNo = req.params.idNo;
@@ -425,7 +504,6 @@ export const createStaffRecord = async (req, res) => {
   //   }
   // );
 
-  console.log("idNo", idNo, "fName", fName, "sName", sName);
   // SUPABASE
   const { data, error } = await supabase
     .from(staffTableName)
@@ -433,7 +511,7 @@ export const createStaffRecord = async (req, res) => {
 
   if (error) {
     console.error(error);
-    res.status(500).send("Internal Server Error");
+    res.status(500).send({ error: "Internal Server Error" });
     return;
   }
 
@@ -602,7 +680,7 @@ export const getStudentData = async (req, res) => {
     .select("*")
     .gte(
       "timestamp",
-      moment().subtract(7, "days").format("YYYY-MM-DD HH:mm:ss")
+      moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss")
     )
     .neq("ailment", "")
     .order("timestamp", { ascending: false });
@@ -649,7 +727,7 @@ export const getStaffData = async (req, res) => {
     .select("*")
     .gte(
       "timestamp",
-      moment().subtract(7, "days").format("YYYY-MM-DD HH:mm:ss")
+      moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss")
     )
     .neq("ailment", "")
     .order("timestamp", { ascending: false });
@@ -699,10 +777,15 @@ export const updateReport = async (req, res) => {
   // Reset the report table
   await resetReportTable();
 
-  const twentyFourHoursAgo = moment()
-    .subtract(24, "hours")
-    .format("YYYY-MM-DD HH:mm:ss");
+  // const twentyFourHoursAgo = moment()
+  //   .subtract(24, "hours")
+  //   .format("YYYY-MM-DD HH:mm:ss");
   const todayAsANumber = moment().date();
+
+  // LOGIC ERROR : Fetching records for the last 24 hours instead of today
+  const twentyFourHoursAgo = moment()
+    .startOf("day")
+    .format("YYYY-MM-DD HH:mm:ss");
 
   // Query staff and student tables from Supabase
   const { data: staffRecords, error: staffError } = await supabase
