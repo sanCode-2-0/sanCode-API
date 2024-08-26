@@ -65,6 +65,15 @@ const accessLogStream = fs.createWriteStream(
 );
 app.use(morgan("combined", { stream: accessLogStream }));
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send({
+    status: "500",
+    message: "Internal server error",
+    solution: "Please contact the administrator",
+  });
+});
 app.use("/", sanCodeBackendRoutes);
 
 app.listen(KEYS.PORT, () => {

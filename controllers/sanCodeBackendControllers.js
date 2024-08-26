@@ -68,7 +68,7 @@ import {
 } from "../config/database.js";
 import { KEYS } from "../config/keys.js";
 import { supabase } from "../config/supabase/config.js";
-
+import { dev_mode } from "../dev_mode.js";
 //Return name of the API if requested
 export const defaultResponse = async (req, res) => {
   res.status(200).send({
@@ -743,6 +743,115 @@ export const getStaffData = async (req, res) => {
 
 // Endpoint to update report data
 export const updateReport = async (req, res) => {
+  const updateReportTable = async () => {
+    const numberOfDaysSinceStartOfThisMonth = moment()
+      .startOf("month")
+      .format("YYYY-MM-DD HH:mm:ss");
+
+    const { data: staffRecords, error: staffError } = await supabase
+      .from(staffTableName)
+      .select("*")
+      .gte("timestamp", numberOfDaysSinceStartOfThisMonth);
+
+    const { data: studentRecords, error: studentError } = await supabase
+      .from(studentTableName)
+      .select("*")
+      .gte("timestamp", numberOfDaysSinceStartOfThisMonth);
+
+    if (staffError || studentError) {
+      console.error("Error fetching records:", staffError || studentError);
+      throw new Error("Error fetching records");
+    }
+
+    const rows = [...staffRecords, ...studentRecords];
+
+    const groupRecordsByDay = rows.reduce((acc, record) => {
+      const date = moment(record.timestamp).date();
+
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+
+      acc[date].push(record);
+
+      return acc;
+    }, {});
+
+    dev_mode && console.log("groupRecordsByDay", groupRecordsByDay);
+
+    const groupAilmentTotalNumbersByDay = Object.keys(groupRecordsByDay).reduce(
+      (acc, day) => {
+        acc[day] = groupRecordsByDay[day].reduce((acc, record) => {
+          const { ailment } = record;
+
+          if (!acc[ailment]) {
+            acc[ailment] = 1;
+          } else {
+            acc[ailment]++;
+          }
+
+          return acc;
+        }, {});
+
+        return acc;
+      },
+      {}
+    );
+
+    dev_mode &&
+      console.log(
+        "groupAilmentTotalNumbersByDay",
+        groupAilmentTotalNumbersByDay
+      );
+
+    // groupAilmentTotalNumbersByDay Example: {
+    //   '1': { 'Upper Respiratory Tract Infections': 2, 'All Other Diseases': 1 },
+    //   '2': { 'Upper Respiratory Tract Infections': 4, 'Other Injuries': 1 },
+    //   '3': { 'Upper Respiratory Tract Infections': 2 },
+    //   '5': {
+    //     'Muscular Skeletal Conditions': 2,
+    //     'Upper Respiratory Tract Infections': 3
+    //   },
+    //   '7': { 'Other Injuries': 1 },
+    //   '8': { 'Dental Disroders': 1 },
+    //   '9': { 'Upper Respiratory Tract Infections': 6, 'Suspected Malaria': 1 },
+    //   '12': { 'Upper Respiratory Tract Infections': 1 },
+    //   '25': { Tetanus: 1 }
+    // }
+
+    await Promise.all(
+      Object.keys(groupAilmentTotalNumbersByDay).map(async (day, index) => {
+        const totalNumbersByDay = Object.keys(
+          groupAilmentTotalNumbersByDay[day]
+        ).reduce((acc, ailment) => {
+          acc[ailment] = groupAilmentTotalNumbersByDay[day][ailment];
+          return acc;
+        }, {});
+
+        // totalNumbersByDay Example : { 'Upper Respiratory Tract Infections': 2, 'All Other Diseases': 1 }
+
+        Object.keys(totalNumbersByDay).map(async (ailment, index) => {
+          const count_per_ailment = totalNumbersByDay[ailment];
+
+          const { error } = await supabase
+            .from(reportTableName)
+            .update({
+              [`${day}`]: count_per_ailment,
+            })
+            .eq("disease", ailment);
+
+          if (error) {
+            console.error(
+              `Error updating report for day ${day} and ailment ${ailment}:`,
+              error.message
+            );
+            throw new Error(`Error updating report for day ${day}`);
+          }
+        });
+      })
+    );
+  };
+
   const resetReportTable = async () => {
     const today = moment().date();
     const lastDayOfMonth = moment().endOf("month").date();
@@ -756,7 +865,8 @@ export const updateReport = async (req, res) => {
         // Perform update for each day using Supabase
         const { error } = await supabase
           .from(reportTableName)
-          .update(updateData);
+          .update(updateData)
+          .eq("disease" /*Every ailment in list*/);
 
         if (error) {
           console.error(
@@ -774,80 +884,9 @@ export const updateReport = async (req, res) => {
     }
   };
 
-  // Reset the report table
   await resetReportTable();
 
-  // const twentyFourHoursAgo = moment()
-  //   .subtract(24, "hours")
-  //   .format("YYYY-MM-DD HH:mm:ss");
-  const todayAsANumber = moment().date();
-
-  // LOGIC ERROR : Fetching records for the last 24 hours instead of today
-  const twentyFourHoursAgo = moment()
-    .startOf("day")
-    .format("YYYY-MM-DD HH:mm:ss");
-
-  // Query staff and student tables from Supabase
-  const { data: staffRecords, error: staffError } = await supabase
-    .from(staffTableName)
-    .select("*")
-    .gte("timestamp", twentyFourHoursAgo);
-
-  const { data: studentRecords, error: studentError } = await supabase
-    .from(studentTableName)
-    .select("*")
-    .gte("timestamp", twentyFourHoursAgo);
-
-  if (staffError || studentError) {
-    console.error("Error fetching records:", staffError || studentError);
-    throw new Error("Error fetching records");
-  }
-
-  // Merge both sets of records
-  const rows = [...staffRecords, ...studentRecords];
-
-  await Promise.all(
-    rows.map(async (record) => {
-      const { ailment, timestamp } = record;
-      const dateToBeChecked = moment(timestamp, "YYYY-MM-DD HH:mm:ss");
-
-      if (dateToBeChecked.isAfter(moment().subtract(24, "hours"))) {
-        // Query current count from Supabase first
-        const { data: currentReport, error: currentError } = await supabase
-          .from(reportTableName)
-          .select(`${todayAsANumber}`)
-          .eq("disease", ailment)
-          .single();
-
-        if (currentError) {
-          console.error(
-            "Error fetching current report data:",
-            currentError.message
-          );
-          // throw new Error("Error fetching current report data");
-        }
-
-        const currentCount = currentReport
-          ? currentReport[todayAsANumber] || 0
-          : 0;
-
-        // Update report table in Supabase
-        const { error: updateError } = await supabase
-          .from(reportTableName)
-          .update({
-            [`${todayAsANumber}`]: currentCount + 1,
-          })
-          .eq("disease", ailment);
-
-        if (updateError) {
-          console.error("Error updating report:", updateError.message);
-          throw new Error("Error updating report");
-        } else {
-          console.log(`Updated report for ailment ${ailment}`);
-        }
-      }
-    })
-  );
+  await updateReportTable();
 
   res
     .status(200)
