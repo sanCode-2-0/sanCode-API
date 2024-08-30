@@ -411,7 +411,7 @@ export const createStudentRecord = async (req, res) => {
 
   res.status(200).json({
     status: 200,
-    message: `Entry created successfully for ${fName}`,
+    message: `Entry created successfully for ${admNo}`,
     admNo,
     fName,
   });
@@ -443,7 +443,7 @@ export const updateStudentRecord = async (req, res) => {
 
   res.status(200).json({
     status: 200,
-    message: `Record updated successfully for ${fName}`,
+    message: `Record updated successfully for ${admNo}`,
     admNo,
     fName,
   });
@@ -563,7 +563,7 @@ export const staffFullEntry = async (req, res) => {
     "ailment",
     ailment,
     "medication",
-    medication
+    medication,
   );
 
   // SUPABASE
@@ -680,7 +680,7 @@ export const getStudentData = async (req, res) => {
     .select("*")
     .gte(
       "timestamp",
-      moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss")
+      moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss"),
     )
     .neq("ailment", "")
     .order("timestamp", { ascending: false });
@@ -727,7 +727,7 @@ export const getStaffData = async (req, res) => {
     .select("*")
     .gte(
       "timestamp",
-      moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss")
+      moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss"),
     )
     .neq("ailment", "")
     .order("timestamp", { ascending: false });
@@ -795,13 +795,13 @@ export const updateReport = async (req, res) => {
 
         return acc;
       },
-      {}
+      {},
     );
 
     dev_mode &&
       console.log(
         "groupAilmentTotalNumbersByDay",
-        groupAilmentTotalNumbersByDay
+        groupAilmentTotalNumbersByDay,
       );
 
     // groupAilmentTotalNumbersByDay Example: {
@@ -822,7 +822,7 @@ export const updateReport = async (req, res) => {
     await Promise.all(
       Object.keys(groupAilmentTotalNumbersByDay).map(async (day, index) => {
         const totalNumbersByDay = Object.keys(
-          groupAilmentTotalNumbersByDay[day]
+          groupAilmentTotalNumbersByDay[day],
         ).reduce((acc, ailment) => {
           acc[ailment] = groupAilmentTotalNumbersByDay[day][ailment];
           return acc;
@@ -843,12 +843,12 @@ export const updateReport = async (req, res) => {
           if (error) {
             console.error(
               `Error updating report for day ${day} and ailment ${ailment}:`,
-              error.message
+              error.message,
             );
             throw new Error(`Error updating report for day ${day}`);
           }
         });
-      })
+      }),
     );
   };
 
@@ -871,7 +871,7 @@ export const updateReport = async (req, res) => {
         if (error) {
           console.error(
             `Error resetting report for day ${day}:`,
-            error.message
+            error.message,
           );
           throw new Error(`Error resetting report for day ${day}`);
         }

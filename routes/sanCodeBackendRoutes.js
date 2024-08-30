@@ -45,6 +45,7 @@
 import { Router } from "express";
 import {
   createStaffRecord,
+  createStudentRecord,
   defaultResponse,
   generateExcel,
   getDiseaseNames,
@@ -61,6 +62,7 @@ import {
   studentFullEntry,
   studentQuickUpdate,
   updateReport,
+  updateStudentRecord,
 } from "../controllers/sanCodeBackendControllers.js";
 
 const router = Router();
@@ -74,6 +76,12 @@ router.route("/students-going-to-hospital").get(getStudentsGoingToHospital);
 router.route("/student-full-entry").post(studentFullEntry);
 
 router.route("/student-quick-update").post(studentQuickUpdate);
+
+router.route("/student-create-entry").post(createStudentRecord);
+
+router.route("/student-update-entry").post(updateStudentRecord);
+
+// Staff
 
 router.route("/staff/:idNo").get(getStaffMemberByID);
 
