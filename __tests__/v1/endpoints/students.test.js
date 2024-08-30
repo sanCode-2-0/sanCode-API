@@ -141,6 +141,33 @@ describe("Test POST /student-quick-update", () => {
   });
 });
 
+describe("Test POST /student-create-entry",() =>{
+  const testPostData = {
+    admNo: 12111,
+    fName: "fName",
+    sName: "sName",
+    class: "2K",
+  }
+
+  //Status 204 - Updated with no meaningful return data
+  test("Test status code returned ( 200 )", async () => {
+    await request(app)
+      .post("/student-create-entry")
+      .send(testPostData)
+      .expect(200);
+  });
+
+  //Status code and message returned
+  test("Test json data returned ( {status,message} )", async () => {
+    const response = await request(app)
+      .post("/student-create-entry")
+      .send(testPostData)
+      .expect(200);
+    expect(response._body).toHaveProperty("status");
+    expect(response._body).toHaveProperty("message");
+  });
+})
+
 describe("Test GET /student-data", () => {
   //Status 200 - Successful
   test("Status 200 - Successful", async () => {
@@ -204,19 +231,6 @@ describe("Test GET /generate-excel", () => {
     console.log(response._body);
   });
 });
-
-// describe("Test POST /new-students",()=>{
-//     const arrayWithNewStudents = [
-//         "Tony","Stark",1234,"4K"
-//     ]
-//     //Status 201 - Created
-//     test("Status 201 - Created", async()=>{
-//         await request(app)
-//             .post("/new-students")
-//             .send(arrayWithNewStudents)
-//             .expect(201)
-//     })
-// })
 
 describe("Test GET /disease", () => {
   test("Status 200 - Successful", async () => {
