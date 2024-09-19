@@ -563,7 +563,7 @@ export const staffFullEntry = async (req, res) => {
     "ailment",
     ailment,
     "medication",
-    medication,
+    medication
   );
 
   // SUPABASE
@@ -680,7 +680,7 @@ export const getStudentData = async (req, res) => {
     .select("*")
     .gte(
       "timestamp",
-      moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss"),
+      moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss")
     )
     .neq("ailment", "")
     .order("timestamp", { ascending: false });
@@ -727,7 +727,7 @@ export const getStaffData = async (req, res) => {
     .select("*")
     .gte(
       "timestamp",
-      moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss"),
+      moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss")
     )
     .neq("ailment", "")
     .order("timestamp", { ascending: false });
@@ -795,34 +795,108 @@ export const updateReport = async (req, res) => {
 
         return acc;
       },
-      {},
+      {}
     );
+
+    // Calculate groupFirstAttendanceNumbersByDay
+    const groupFirstAttendanceNumbersByDay = Object.keys(
+      groupRecordsByDay
+    ).reduce((acc, day) => {
+      acc[day] = groupRecordsByDay[day].reduce((innerAcc, record) => {
+        const { timestamp } = record;
+        const recordDate = new Date(timestamp).toDateString();
+        const todayDate = new Date().toDateString();
+
+        if (recordDate !== todayDate) {
+          innerAcc += 1;
+        }
+
+        return innerAcc;
+      }, 0); // Initialize innerAcc to 0
+      return acc;
+    }, {});
+
+    // Calculate groupReAttendanceNumbersByDay
+    const groupReAttendanceNumbersByDay = Object.keys(groupRecordsByDay).reduce(
+      (acc, day) => {
+        acc[day] = groupRecordsByDay[day].reduce((innerAcc, record) => {
+          const { timestamp } = record;
+          const recordDate = new Date(timestamp).toDateString();
+          const todayDate = new Date().toDateString();
+
+          if (recordDate === todayDate) {
+            innerAcc += 1;
+          }
+
+          return innerAcc;
+        }, 0); // Initialize innerAcc to 0
+        return acc;
+      },
+      {}
+    );
+
+    // Calculate groupReferralsByDay
+    const groupReferralsByDay = Object.keys(groupRecordsByDay).reduce(
+      (acc, day) => {
+        acc[day] = groupRecordsByDay[day].reduce((innerAcc, record) => {
+          const { timestamp, going_to_hospital } = record;
+          const recordDate = new Date(timestamp).toDateString();
+          const todayDate = new Date().toDateString();
+
+          if (recordDate === todayDate && going_to_hospital === 1) {
+            innerAcc += 1;
+          }
+
+          return innerAcc;
+        }, 0); // Initialize innerAcc to 0
+        return acc;
+      },
+      {}
+    );
+
+    dev_mode && console.log(groupFirstAttendanceNumbersByDay);
+    dev_mode && console.log(groupReAttendanceNumbersByDay);
+    dev_mode && console.log(groupReferralsByDay);
+
+    // Merge groupFirstAttendanceNumbersByDay into groupAilmentTotalNumbersByDay
+    Object.keys(groupFirstAttendanceNumbersByDay).forEach((day) => {
+      const firstAttendanceCount = groupFirstAttendanceNumbersByDay[day];
+      if (!groupAilmentTotalNumbersByDay[day]) {
+        groupAilmentTotalNumbersByDay[day] = {};
+      }
+      groupAilmentTotalNumbersByDay[day]["NO. OF FIRST ATTENDANCES"] =
+        firstAttendanceCount;
+    });
+
+    // Merge groupReAttendanceNumbersByDay into groupAilmentTotalNumbersByDay
+    Object.keys(groupReAttendanceNumbersByDay).forEach((day) => {
+      const reAttendanceCount = groupReAttendanceNumbersByDay[day];
+      if (!groupAilmentTotalNumbersByDay[day]) {
+        groupAilmentTotalNumbersByDay[day] = {};
+      }
+      groupAilmentTotalNumbersByDay[day]["RE-ATTENDANCES"] = reAttendanceCount;
+    });
+
+    // Merge groupReferralsByDay into groupAilmentTotalNumbersByDay
+    Object.keys(groupReferralsByDay).forEach(day => {
+      const referralCount = groupReferralsByDay[day];
+      if (!groupAilmentTotalNumbersByDay[day]) {
+        groupAilmentTotalNumbersByDay[day] = {};
+      }
+      groupAilmentTotalNumbersByDay[day]['Referrals to other health facility'] = referralCount;
+    });
 
     dev_mode &&
       console.log(
         "groupAilmentTotalNumbersByDay",
-        groupAilmentTotalNumbersByDay,
+        groupAilmentTotalNumbersByDay
       );
 
-    // groupAilmentTotalNumbersByDay Example: {
-    //   '1': { 'Upper Respiratory Tract Infections': 2, 'All Other Diseases': 1 },
-    //   '2': { 'Upper Respiratory Tract Infections': 4, 'Other Injuries': 1 },
-    //   '3': { 'Upper Respiratory Tract Infections': 2 },
-    //   '5': {
-    //     'Muscular Skeletal Conditions': 2,
-    //     'Upper Respiratory Tract Infections': 3
-    //   },
-    //   '7': { 'Other Injuries': 1 },
-    //   '8': { 'Dental Disroders': 1 },
-    //   '9': { 'Upper Respiratory Tract Infections': 6, 'Suspected Malaria': 1 },
-    //   '12': { 'Upper Respiratory Tract Infections': 1 },
-    //   '25': { Tetanus: 1 }
-    // }
-
+    // Update report table with groupAilmentTotalNumbersByDay
     await Promise.all(
       Object.keys(groupAilmentTotalNumbersByDay).map(async (day, index) => {
         const totalNumbersByDay = Object.keys(
-          groupAilmentTotalNumbersByDay[day],
+          groupAilmentTotalNumbersByDay[day]
         ).reduce((acc, ailment) => {
           acc[ailment] = groupAilmentTotalNumbersByDay[day][ailment];
           return acc;
@@ -843,12 +917,12 @@ export const updateReport = async (req, res) => {
           if (error) {
             console.error(
               `Error updating report for day ${day} and ailment ${ailment}:`,
-              error.message,
+              error.message
             );
             throw new Error(`Error updating report for day ${day}`);
           }
         });
-      }),
+      })
     );
   };
 
@@ -871,7 +945,7 @@ export const updateReport = async (req, res) => {
         if (error) {
           console.error(
             `Error resetting report for day ${day}:`,
-            error.message,
+            error.message
           );
           throw new Error(`Error resetting report for day ${day}`);
         }
