@@ -680,7 +680,11 @@ export const getStudentData = async (req, res) => {
     .select("*")
     .gte(
       "timestamp",
+<<<<<<< Updated upstream
       moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss")
+=======
+      moment().subtract(80, "days").format("YYYY-MM-DD HH:mm:ss")
+>>>>>>> Stashed changes
     )
     .neq("ailment", "")
     .order("timestamp", { ascending: false });
@@ -727,7 +731,11 @@ export const getStaffData = async (req, res) => {
     .select("*")
     .gte(
       "timestamp",
+<<<<<<< Updated upstream
       moment().subtract(40, "days").format("YYYY-MM-DD HH:mm:ss")
+=======
+      moment().subtract(80, "days").format("YYYY-MM-DD HH:mm:ss")
+>>>>>>> Stashed changes
     )
     .neq("ailment", "")
     .order("timestamp", { ascending: false });
