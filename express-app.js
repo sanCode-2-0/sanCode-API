@@ -1,21 +1,25 @@
-import bodyParser from "body-parser";
-import cors from "cors";
-import fs from "fs";
-import sanCodeBackendRoutes from "./routes/sanCodeBackendRoutes.js";
-import { KEYS } from "./config/keys.js";
-import path from "path";
-import morgan from "morgan";
-import moment from "moment-timezone";
-import express from "express";
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const fs = require("fs");
+const sanCodeBackendRoutes = require("./routes/sanCodeBackendRoutes.js");
+const { KEYS } = require("./config/keys.js");
+const path = require("path");
+const morgan = require("morgan");
+const moment = require("moment-timezone");
 
-export const app = express();
+const express = require("express");
+const app = express();
 
+module.exports.app = app;
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());
 
 const startOfToday = moment().format("dddd_Do_MMMM_YYYY");
-const accessLogStream = fs.createWriteStream(path.join(KEYS.LOG_DIR, `${startOfToday}.log`), { flags: "a" });
+const accessLogStream = fs.createWriteStream(
+  path.join(KEYS.LOG_DIR, `${startOfToday}.log`),
+  { flags: "a" }
+);
 app.use(morgan("combined", { stream: accessLogStream }));
 
 app.use("/", sanCodeBackendRoutes);
@@ -34,8 +38,8 @@ app.listen(KEYS.PORT, () => {
 
   //Create logs folder
   const logsFolder = "logs";
-  if(!fs.existsSync(logsFolder)){
-    fs.mkdirSync(logsFolder,{recursive: true});
+  if (!fs.existsSync(logsFolder)) {
+    fs.mkdirSync(logsFolder, { recursive: true });
   }
 
   fs.writeFile(`./logs/${startOfToday}.log`, "", (err) => {

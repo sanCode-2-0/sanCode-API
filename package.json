@@ -5,7 +5,7 @@
   "description": "The API That Makes Managing Student Health Records Easy",
   "main": "express-app.js",
   "build": "pkg express-app.js -o sanCode-API",
-  "type": "module",
+  "type": "commonjs",
   "bin": {
     "express-app": "express-app.js"
   },

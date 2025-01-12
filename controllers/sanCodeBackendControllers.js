@@ -1,31 +1,32 @@
-import { validationResult, check } from 'express-validator';
-import express, { json } from "express";
+const { validationResult, check } = require("express-validator");
+const express = require("express");
 const app = express();
-import cors from "cors";
-import excelJS from "exceljs";
-import moment from "moment-timezone";
-import pkg from "body-parser";
+const cors = require("cors");
+const excelJS = require("exceljs");
+const moment = require("moment-timezone");
+const pkg = require("body-parser");
 const { json: _json } = pkg;
-import loadData from "../assets/ailmentsChecked.js";
+const loadData = require("../assets/ailmentsChecked.js");
+
 app.use(cors());
-app.use(json());
+app.use(express.json());
 app.use(_json());
 
 // Start of today date
-export const startOfToday = moment().startOf("day");
-//End of today date
+exports.startOfToday = moment().startOf("day");
+// End of today date
 const endOfToday = moment().endOf("day");
 
-import {
+const {
   db,
   staffTableName,
   studentTableName,
   reportTableName,
-} from "../config/database.js";
-import { KEYS } from "../config/keys.js";
+} = require("../config/database.js");
+const { KEYS } = require("../config/keys.js");
 
 //Return name of the API if requested
-export const defaultResponse = async (req, res) => {
+const defaultResponse = async (req, res) => {
   res.status(200).send({
     status: 200,
     message: "Make requests to the san-code API",
@@ -34,13 +35,15 @@ export const defaultResponse = async (req, res) => {
 // Import the validation library
 
 //Endpoint to validate that student exists in the database
-export const getStudentByAdmissionNumber = async (req, res) => {
+const getStudentByAdmissionNumber = async (req, res) => {
   const admissionNumber = Number(req.params.admissionNumber);
 
   // Validate admissionNumber input
   const validationRules = [
     // Rule to check if admissionNumber is a number
-    check('admissionNumber').isNumeric().withMessage('Invalid admission number'),
+    check("admissionNumber")
+      .isNumeric()
+      .withMessage("Invalid admission number"),
   ];
 
   // Validate the input
@@ -58,7 +61,9 @@ export const getStudentByAdmissionNumber = async (req, res) => {
         // Log the error to a file
         console.error(err);
         // Send generic response for database disconnection error
-        res.status(500).json({ error: "An error occurred. Please try again later" });
+        res
+          .status(500)
+          .json({ error: "An error occurred. Please try again later" });
         return;
       }
       if (!rows || rows.length === 0) {
@@ -71,7 +76,7 @@ export const getStudentByAdmissionNumber = async (req, res) => {
 };
 
 // Endpoint to accept data from the full entry submission
-export const studentFullEntry = async (req, res) => {
+const studentFullEntry = async (req, res) => {
   /*
    * FLOW
    * Check if request body exists and is not null.
@@ -85,31 +90,52 @@ export const studentFullEntry = async (req, res) => {
    */
   try {
     if (req?.body !== null && req?.body !== undefined) {
-      const { studentAdmNo, tempReading, complain, ailment, medication } = req.body;
+      const { studentAdmNo, tempReading, complain, ailment, medication } =
+        req.body;
 
       //Validate input data
-      if (!studentAdmNo || !tempReading || !complain || !ailment || !medication) {
-        res.status(400).json({ error: "Invalid input data" })
-        return
+      if (
+        !studentAdmNo ||
+        !tempReading ||
+        !complain ||
+        !ailment ||
+        !medication
+      ) {
+        res.status(400).json({ error: "Invalid input data" });
+        return;
       }
       // Timestamp
       // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
 
       // Update record where student admno matches studentAdmNo
       const query = `UPDATE ${studentTableName} SET tempReading=?, complain=?, ailment=?, medication=?, timestamp=? WHERE admNo=?`;
-      const values = [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), studentAdmNo];
+      const values = [
+        tempReading,
+        complain,
+        ailment,
+        medication,
+        moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
+        studentAdmNo,
+      ];
       //Regular function is used instead of arrow function to be able to access `this` within the function
       db.run(query, values, function (error) {
         if (error) {
           // console.error(error.message);
-          res.status(500).send("An error occurred while processing the request.");
+          res
+            .status(500)
+            .send("An error occurred while processing the request.");
         } else {
           //Should only return if rows are updated
           if (this.changes === 0) {
             res.status(204).send("No rows were updated.");
           } else {
             //Status 200 - Success
-            res.status(200).json({status:200, message: `Record updated for ${studentAdmNo} successfully. ${new Date().toISOString().replace(/T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, "")} `});
+            res.status(200).json({
+              status: 200,
+              message: `Record updated for ${studentAdmNo} successfully. ${new Date()
+                .toISOString()
+                .replace(/T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, "")} `,
+            });
           }
         }
       });
@@ -120,13 +146,13 @@ export const studentFullEntry = async (req, res) => {
 };
 
 // Endpoint to accept data from the quick update submission
-export const studentQuickUpdate = async (req, res) => {
+const studentQuickUpdate = async (req, res) => {
   const { studentAdmNo, tempReading } = req.body;
 
   //Validate input
   if (!studentAdmNo || !tempReading) {
-    res.status(400).json({ error: "Invalid input data" })
-    return
+    res.status(400).json({ error: "Invalid input data" });
+    return;
   }
   // Timestamp
   // const timestamp = moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
@@ -138,16 +164,21 @@ export const studentQuickUpdate = async (req, res) => {
     (error) => {
       if (error) {
         //Log error.message
-        res.status(500).send({ error: "An error occured while updating the record." });
+        res
+          .status(500)
+          .send({ error: "An error occured while updating the record." });
       } else {
-        res.status(200).json({status: 200, message:`Record updated for ${studentAdmNo} successfully.`});
+        res.status(200).json({
+          status: 200,
+          message: `Record updated for ${studentAdmNo} successfully.`,
+        });
       }
     }
   );
 };
 
 //Endpoint to validate that staff exists in the database
-export const getStaffMemberByID = async (req, res) => {
+const getStaffMemberByID = async (req, res) => {
   let idNo = req.params.idNo;
 
   // Select all from staff table
@@ -164,7 +195,7 @@ export const getStaffMemberByID = async (req, res) => {
 };
 
 //Endpoint to create a record for a staff member
-export const createStaffRecord = async (req, res) => {
+const createStaffRecord = async (req, res) => {
   const { idNo, fName, sName } = req.body;
 
   //Insert a new record for the staff members
@@ -187,7 +218,7 @@ export const createStaffRecord = async (req, res) => {
 };
 
 // Endpoint to accept data from the full entry submission for a staff member
-export const staffFullEntry = async (req, res) => {
+const staffFullEntry = async (req, res) => {
   const { idNo, tempReading, complain, ailment, medication } = req.body;
 
   // Timestamp
@@ -196,19 +227,28 @@ export const staffFullEntry = async (req, res) => {
   // Update record where staff Kenyan id No matches idNo
   db.run(
     `UPDATE ${staffTableName} SET tempReading =?, complain =?, ailment =?, medication =?, timestamp =? WHERE idNo =? `,
-    [tempReading, complain, ailment, medication, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), idNo],
+    [
+      tempReading,
+      complain,
+      ailment,
+      medication,
+      moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
+      idNo,
+    ],
     (error) => {
       if (error) {
         res.status(500).send("Error updating the record.");
       } else {
-        res.status(200).send({message: `Record updated for ${idNo} successfully.`});
+        res
+          .status(200)
+          .send({ message: `Record updated for ${idNo} successfully.` });
       }
     }
   );
 };
 
 // Endpoint to accept data from the quick update submission for a staff member
-export const staffQuickUpdate = async (req, res) => {
+const staffQuickUpdate = async (req, res) => {
   const { idNo, tempReading } = req.body;
 
   // Timestamp
@@ -217,19 +257,25 @@ export const staffQuickUpdate = async (req, res) => {
   // Update record where staff idNo matches idNo
   db.run(
     `UPDATE ${staffTableName} SET tempReading =?, timestamp =? WHERE idNo =? `,
-    [tempReading, moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"), idNo],
+    [
+      tempReading,
+      moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
+      idNo,
+    ],
     (error) => {
       if (error) {
         res.status(500).send(`Error updating the record.Message : ${error} `);
       } else {
-        res.status(200).send({message: `Record updated for ${idNo} successfully.`});
+        res
+          .status(200)
+          .send({ message: `Record updated for ${idNo} successfully.` });
       }
     }
   );
 };
 
 // Endpoint to fetch today's student data for purposes of the nurse filtering
-export const getStudentData = (req, res) => {
+const getStudentData = (req, res) => {
   db.all(
     `SELECT * FROM ${studentTableName} ORDER BY timestamp DESC`,
     [],
@@ -266,7 +312,7 @@ export const getStudentData = (req, res) => {
 };
 
 // Endpoint to fetch today's staff data for purposes of the nurse filtering
-export const getStaffData = (req, res) => {
+const getStaffData = (req, res) => {
   db.all(
     `SELECT * FROM ${staffTableName} ORDER BY timestamp DESC`,
     [],
@@ -303,7 +349,7 @@ export const getStaffData = (req, res) => {
 };
 
 // Endpoint to update report data
-export const updateReport = async (req, res) => {
+const updateReport = async (req, res) => {
   // When I wrote this function - Only God and I could understand it
   // Now only God understands it.
   // If you're trying to optimize this block - Please add to the counter and move on
@@ -345,7 +391,6 @@ export const updateReport = async (req, res) => {
       if (dateToBeChecked.isBetween(startOfToday, endOfToday)) {
         filteredData.push(data[i]);
       }
-
     }
 
     const ailmentsChecked = await loadData();
@@ -359,7 +404,6 @@ export const updateReport = async (req, res) => {
     });
 
     const todayAsANumber = moment().date();
-
 
     const updatePromises = [];
     for (const eachAilmentToUpdate in countByAilment) {
@@ -435,7 +479,7 @@ export const updateReport = async (req, res) => {
 };
 
 // Endpoint to generate excel
-export const generateExcel = (req, res) => {
+const generateExcel = (req, res) => {
   // Select all records from both the students table and staff table
   db.all(
     `SELECT staffRecordID AS recordID, idNo AS regNo, fName, sName, NULL AS tName, NULL AS fourthName, NULL AS class, tempReading, complain, ailment, medication, timestamp
@@ -523,10 +567,10 @@ export const generateExcel = (req, res) => {
               if (error) {
                 res.status(500).json({
                   error: 500,
-                  message: "Error generating Excel file!"
-                })
+                  message: "Error generating Excel file!",
+                });
               }
-            })
+            });
           });
       } catch (error) {
         res.send({
@@ -539,7 +583,7 @@ export const generateExcel = (req, res) => {
 };
 
 //Endpoint to post new student details
-export const newStudents = async (req, res) => {
+const newStudents = async (req, res) => {
   //Binding to hold onto the array with student details
   const arrayWithStudentDetails = req.body;
 
@@ -582,7 +626,7 @@ export const newStudents = async (req, res) => {
 };
 
 // Endpoint to get disease names
-export const getDiseaseNames = (req, res) => {
+const getDiseaseNames = (req, res) => {
   db.all(`SELECT disease FROM ${reportTableName}`, [], (err, rows) => {
     if (err) {
       console.error(err.message);
@@ -600,7 +644,7 @@ export const getDiseaseNames = (req, res) => {
 };
 
 // Endpoint to return report data
-export const getReportData = (req, res) => {
+const getReportData = (req, res) => {
   // Select table
   db.all(`SELECT * FROM ${reportTableName}`, [], (err, rows) => {
     if (err) {
@@ -621,7 +665,7 @@ export const getReportData = (req, res) => {
 
 //Endpoint to return data for the analytics page
 // Endpoint to return report data with pagination
-export const getReportAnalytics = (req, res) => {
+const getReportAnalytics = (req, res) => {
   const page = req.query.page || 1; // Get the page number from the request query, default to 1
   const pageSize = 10; // Number of records to return per page
 
@@ -650,4 +694,23 @@ export const getReportAnalytics = (req, res) => {
       res.json(data);
     }
   );
+};
+
+module.exports = {
+  createStaffRecord,
+  defaultResponse,
+  generateExcel,
+  getDiseaseNames,
+  getReportAnalytics,
+  getReportData,
+  getStaffData,
+  getStaffMemberByID,
+  getStudentByAdmissionNumber,
+  getStudentData,
+  newStudents,
+  staffFullEntry,
+  staffQuickUpdate,
+  studentFullEntry,
+  studentQuickUpdate,
+  updateReport,
 };

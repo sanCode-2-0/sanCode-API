@@ -1,5 +1,5 @@
-import { Router } from "express";
-import {
+const { Router } = require("express");
+const {
   createStaffRecord,
   defaultResponse,
   generateExcel,
@@ -16,7 +16,7 @@ import {
   studentFullEntry,
   studentQuickUpdate,
   updateReport,
-} from "../controllers/sanCodeBackendControllers.js";
+} = require("../controllers/sanCodeBackendControllers.js");
 
 const router = Router();
 
@@ -52,4 +52,4 @@ router.route("/report").get(getReportData);
 
 router.route("/report-analytics").get(getReportAnalytics);
 
-export default router;
+module.exports = router;

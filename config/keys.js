@@ -1,10 +1,15 @@
-import dotenv from "dotenv";
+const dotenv = require("dotenv");
+
 dotenv.config();
 
-export const KEYS = {
+const KEYS = {
   PORT: process.env.PORT,
-  //Path to Home
+  // Path to Home
   HOME: process.env.HOME,
   LOG_DIR: "./logs",
-  MONGO_URI: process.env.MONGO_URI
+  MONGO_URI: process.env.MONGO_URI,
+};
+
+module.exports = {
+  KEYS,
 };
