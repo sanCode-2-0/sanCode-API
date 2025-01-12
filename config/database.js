@@ -1,16 +1,22 @@
-import sqlite3 from "sqlite3";
-sqlite3.verbose();
+// const sqlite3 = require("sqlite3");
+// sqlite3.verbose();
 
 //Database variables
 const databaseName = "san-code.sqlite";
-export const studentTableName = "sanCodeStudent"; //Student records table
-export const staffTableName = "sanCodeStaff"; //Staff records table
-export const reportTableName = "sanCodeReport"; //Report table
+const studentTableName = "sanCodeStudent"; //Student records table
+const staffTableName = "sanCodeStaff"; //Staff records table
+const reportTableName = "sanCodeReport"; //Report table
 
-export const db = new sqlite3.Database(`database/${databaseName}`, (err) => {
-  if (err) {
-    console.error(err.message);
-  } else {
-    console.log(`Connected to the database: ${databaseName}`);
-  }
-});
+// const db = new sqlite3.Database(`database/${databaseName}`, (err) => {
+//   if (err) {
+//     console.error(err.message);
+//   } else {
+//     console.log(`Connected to the database: ${databaseName}`);
+//   }
+// });
+
+module.exports = {
+  studentTableName,
+  staffTableName,
+  reportTableName,
+};

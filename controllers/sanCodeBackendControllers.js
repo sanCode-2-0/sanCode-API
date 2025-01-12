@@ -42,44 +42,50 @@
 //  | $$    $$ \$$    $$  \$$  $$ \$$     \ \$$      |  $$           |  $$           |  $$           |  $$           | $$     \ \$$  \$$$| $$     \      | $$
 //   \$$$$$$$   \$$$$$$$   \$$$$   \$$$$$$$           \$$             \$$             \$$             \$$             \$$$$$$$$  \$$$$$$  \$$$$$$$$       \$$
 
-import { validationResult, check } from "express-validator";
-import express, { json } from "express";
+const { validationResult, check } = require("express-validator");
+const express = require("express");
 const app = express();
-import cors from "cors";
-import excelJS from "exceljs";
-import moment from "moment-timezone";
-import pkg from "body-parser";
+const cors = require("cors");
+const excelJS = require("exceljs");
+const moment = require("moment-timezone");
+const pkg = require("body-parser");
 const { json: _json } = pkg;
-import loadData from "../assets/ailmentsChecked.js";
+const loadData = require("../assets/ailmentsChecked.js");
+
 app.use(cors());
-app.use(json());
+app.use(express.json());
 app.use(_json());
 
 // Start of today date
-export const startOfToday = moment().startOf("day");
-//End of today date
+const startOfToday = moment().startOf("day");
+// End of today date
 const endOfToday = moment().endOf("day");
 
-import {
+const {
   db,
   staffTableName,
   studentTableName,
   reportTableName,
-} from "../config/database.js";
-import { KEYS } from "../config/keys.js";
-import { supabase } from "../config/supabase/config.js";
-import { dev_mode } from "../dev_mode.js";
-//Return name of the API if requested
-export const defaultResponse = async (req, res) => {
+} = require("../config/database.js");
+
+const { KEYS } = require("../config/keys.js");
+const { supabase } = require("../config/supabase/config.js");
+const { dev_mode } = require("../dev_mode.js");
+
+// Return name of the API if requested
+const defaultResponse = async (req, res) => {
   res.status(200).send({
     status: 200,
     message: "Make requests to the san-code API",
   });
 };
+
+module.exports = { startOfToday, defaultResponse };
+
 // Import the validation library
 
 //Endpoint to validate that student exists in the database
-export const getStudentByAdmissionNumber = async (req, res) => {
+const getStudentByAdmissionNumber = async (req, res) => {
   const admissionNumber = Number(req.params.admissionNumber);
 
   // Validate admissionNumber input
@@ -139,7 +145,7 @@ export const getStudentByAdmissionNumber = async (req, res) => {
 };
 
 // Endpoint to get students going to the hospital
-export const getStudentsGoingToHospital = async (req, res) => {
+const getStudentsGoingToHospital = async (req, res) => {
   // SQLITE
   // db.all(
   //   `SELECT * FROM ${studentTableName} WHERE going_to_hospital=?`,
@@ -182,7 +188,7 @@ export const getStudentsGoingToHospital = async (req, res) => {
 };
 
 // Endpoint to accept data from the full entry submission
-export const studentFullEntry = async (req, res) => {
+const studentFullEntry = async (req, res) => {
   /*
    * FLOW
    * Check if request body exists and is not null.
@@ -295,7 +301,7 @@ export const studentFullEntry = async (req, res) => {
 };
 
 // Endpoint to accept data from the quick update submission
-export const studentQuickUpdate = async (req, res) => {
+const studentQuickUpdate = async (req, res) => {
   const { studentAdmNo, tempReading, complain, medication, going_to_hospital } =
     req.body;
 
@@ -371,7 +377,7 @@ export const studentQuickUpdate = async (req, res) => {
 };
 
 //Endpoint to create a new record for a student
-export const createStudentRecord = async (req, res) => {
+const createStudentRecord = async (req, res) => {
   const { admNo, fName, sName, class: className } = req.body;
 
   //Validate input
@@ -418,7 +424,7 @@ export const createStudentRecord = async (req, res) => {
 };
 
 // Endpoint to edit a student record for a student
-export const updateStudentRecord = async (req, res) => {
+const updateStudentRecord = async (req, res) => {
   const { admNo, fName, sName, class: className } = req.body;
 
   //Validate input
@@ -450,7 +456,7 @@ export const updateStudentRecord = async (req, res) => {
 };
 
 //Endpoint to validate that staff exists in the database
-export const getStaffMemberByID = async (req, res) => {
+const getStaffMemberByID = async (req, res) => {
   let idNo = req.params.idNo;
 
   // Select all from staff table
@@ -482,7 +488,7 @@ export const getStaffMemberByID = async (req, res) => {
 };
 
 //Endpoint to create a record for a staff member
-export const createStaffRecord = async (req, res) => {
+const createStaffRecord = async (req, res) => {
   const { idNo, fName, sName } = req.body;
 
   //Insert a new record for the staff members
@@ -524,7 +530,7 @@ export const createStaffRecord = async (req, res) => {
 };
 
 // Endpoint to accept data from the full entry submission for a staff member
-export const staffFullEntry = async (req, res) => {
+const staffFullEntry = async (req, res) => {
   const { idNo, tempReading, complain, ailment, medication } = req.body;
 
   // Timestamp
@@ -591,7 +597,7 @@ export const staffFullEntry = async (req, res) => {
 };
 
 // Endpoint to accept data from the quick update submission for a staff member
-export const staffQuickUpdate = async (req, res) => {
+const staffQuickUpdate = async (req, res) => {
   const { idNo, tempReading, complain, medication } = req.body;
 
   // Timestamp
@@ -643,7 +649,7 @@ export const staffQuickUpdate = async (req, res) => {
 };
 
 // Endpoint to fetch this week's student data for purposes of the nurse filtering
-export const getStudentData = async (req, res) => {
+const getStudentData = async (req, res) => {
   // Select all of this week's student data
   // timestamp : 2024-07-04 22:54:33
 
@@ -693,7 +699,7 @@ export const getStudentData = async (req, res) => {
 };
 
 // Endpoint to fetch today's staff data for purposes of the nurse filtering
-export const getStaffData = async (req, res) => {
+const getStaffData = async (req, res) => {
   // SQLITE
   // db.all(
   //   `SELECT * FROM ${staffTableName} WHERE timestamp >= ? AND ailment != "" ORDER BY timestamp DESC`,
@@ -742,7 +748,7 @@ export const getStaffData = async (req, res) => {
 };
 
 // Endpoint to update report data
-export const updateReport = async (req, res) => {
+const updateReport = async (req, res) => {
   const updateReportTable = async () => {
     const numberOfDaysSinceStartOfThisMonth = moment()
       .startOf("month")
@@ -969,7 +975,7 @@ export const updateReport = async (req, res) => {
 };
 
 // Endpoint to generate excel
-export const generateExcel = async (req, res) => {
+const generateExcel = async (req, res) => {
   // Select all records from both the students table and staff table
   // db.all(
   //   `SELECT staffRecordID AS recordID, idNo AS regNo, fName, sName, NULL AS tName, NULL AS fourthName, NULL AS class, tempReading, complain, ailment, medication, timestamp
@@ -1140,7 +1146,7 @@ export const generateExcel = async (req, res) => {
 };
 
 // Endpoint to post new student details
-export const newStudents = async (req, res) => {
+const newStudents = async (req, res) => {
   // Binding to hold onto the array with student details
   // Convert string to array
   let arrayWithStudentDetails = req?.body?.body;
@@ -1272,7 +1278,7 @@ export const newStudents = async (req, res) => {
 };
 
 // Endpoint to get disease names
-export const getDiseaseNames = async (req, res) => {
+const getDiseaseNames = async (req, res) => {
   // SQLITE
   // db.all(`SELECT disease FROM ${reportTableName}`, [], (err, rows) => {
   //   if (err) {
@@ -1303,7 +1309,7 @@ export const getDiseaseNames = async (req, res) => {
 };
 
 // Endpoint to return report data
-export const getReportData = async (req, res) => {
+const getReportData = async (req, res) => {
   // SQLITE
   // db.all(`SELECT * FROM ${reportTableName}`, [], (err, rows) => {
   //   if (err) {
@@ -1335,7 +1341,7 @@ export const getReportData = async (req, res) => {
 
 //Endpoint to return data for the analytics page
 // Endpoint to return report data with pagination
-export const getReportAnalytics = async (req, res) => {
+const getReportAnalytics = async (req, res) => {
   const page = req.query.page || 1; // Get the page number from the request query, default to 1
   const pageSize = 10; // Number of records to return per page
 
@@ -1377,4 +1383,26 @@ export const getReportAnalytics = async (req, res) => {
   }
 
   res.status(200).json(data);
+};
+
+module.exports = {
+  createStaffRecord,
+  defaultResponse,
+  generateExcel,
+  getDiseaseNames,
+  getReportAnalytics,
+  getReportData,
+  getStaffData,
+  getStaffMemberByID,
+  getStudentByAdmissionNumber,
+  getStudentData,
+  newStudents,
+  staffFullEntry,
+  staffQuickUpdate,
+  studentFullEntry,
+  studentQuickUpdate,
+  updateReport,
+  getStudentsGoingToHospital,
+  updateStudentRecord,
+  createStudentRecord,
 };

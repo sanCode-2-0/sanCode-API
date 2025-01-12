@@ -42,8 +42,8 @@
 //  | $$    $$ \$$    $$  \$$  $$ \$$     \ \$$      |  $$           |  $$           |  $$           |  $$           | $$     \ \$$  \$$$| $$     \      | $$
 //   \$$$$$$$   \$$$$$$$   \$$$$   \$$$$$$$           \$$             \$$             \$$             \$$             \$$$$$$$$  \$$$$$$  \$$$$$$$$       \$$
 
-import { Router } from "express";
-import {
+const { Router } = require("express");
+const {
   createStaffRecord,
   createStudentRecord,
   defaultResponse,
@@ -63,7 +63,7 @@ import {
   studentQuickUpdate,
   updateReport,
   updateStudentRecord,
-} from "../controllers/sanCodeBackendControllers.js";
+} = require("../controllers/sanCodeBackendControllers.js");
 
 const router = Router();
 
@@ -112,4 +112,4 @@ router.route("/download-sqlite-database").get((req, res) => {
   res.download("./database/san-code.sqlite");
 });
 
-export default router;
+module.exports = router;

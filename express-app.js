@@ -42,17 +42,18 @@
 //  | $$    $$ \$$    $$  \$$  $$ \$$     \ \$$      |  $$           |  $$           |  $$           |  $$           | $$     \ \$$  \$$$| $$     \      | $$
 //   \$$$$$$$   \$$$$$$$   \$$$$   \$$$$$$$           \$$             \$$             \$$             \$$             \$$$$$$$$  \$$$$$$  \$$$$$$$$       \$$
 
-import bodyParser from "body-parser";
-import cors from "cors";
-import fs from "fs";
-import sanCodeBackendRoutes from "./routes/sanCodeBackendRoutes.js";
-import { KEYS } from "./config/keys.js";
-import path from "path";
-import morgan from "morgan";
-import moment from "moment-timezone";
-import express from "express";
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const fs = require("fs");
+const sanCodeBackendRoutes = require("./routes/sanCodeBackendRoutes.js");
+const { KEYS } = require("./config/keys.js");
+const path = require("path");
+const morgan = require("morgan");
+const moment = require("moment-timezone");
+const express = require("express");
 
-export const app = express();
+const app = express();
+module.exports = { app };
 
 app.use(cors());
 app.use(express.json());

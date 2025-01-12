@@ -26,4 +26,4 @@ async function loadData() {
 }
 
 // Exporting loadData function directly (no need to export ailmentsChecked)
-export default loadData;
+module.exports = loadData;

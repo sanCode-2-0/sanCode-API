@@ -1,9 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
-import { KEYS } from "../keys.js";
+const { createClient } = require("@supabase/supabase-js");
+const { KEYS } = require("../keys.js");
 
 const supabaseUrl = "https://hqaaeofsktwmuiybldpe.supabase.co";
 const supabaseKey = KEYS.SUPABASE_KEY;
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+
+const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -12,7 +13,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // Supabase Auth
-export async function signInWithEmail() {
+async function signInWithEmail() {
   const { data, error } = await supabase.auth.signInWithPassword({
     email: KEYS.SUPABASE_EMAIL,
     password: KEYS.SUPABASE_PASSWORD,
@@ -20,6 +21,8 @@ export async function signInWithEmail() {
 
   return { data, error };
 }
+
+module.exports = { supabase, signInWithEmail };
 
 // import { createClient } from '@supabase/supabase-js'
 // const supabaseUrl = "https://paomvkbtngloumkimhyj.supabase.co"

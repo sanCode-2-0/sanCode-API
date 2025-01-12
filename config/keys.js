@@ -1,7 +1,7 @@
-import dotenv from "dotenv";
+const dotenv = require("dotenv");
 dotenv.config();
 
-export const KEYS = {
+const KEYS = {
   PORT: process.env.PORT,
   //Path to Home
   HOME: process.env.HOME,
@@ -11,3 +11,5 @@ export const KEYS = {
   SUPABASE_EMAIL: process.env.SUPABASE_EMAIL,
   SUPABASE_PASSWORD: process.env.SUPABASE_PASSWORD,
 };
+
+module.exports = { KEYS };
