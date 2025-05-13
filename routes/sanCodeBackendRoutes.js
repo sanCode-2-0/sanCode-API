@@ -52,8 +52,10 @@ const {
   getReportAnalytics,
   getReportData,
   getStaffData,
+  getStaffHistory,
   getStaffMemberByID,
   getStudentByAdmissionNumber,
+  getStudentHistory,
   getStudentData,
   getStudentsGoingToHospital,
   newStudents,
@@ -71,6 +73,8 @@ router.route("/").get(defaultResponse);
 
 router.route("/students/:admissionNumber").get(getStudentByAdmissionNumber);
 
+router.route("/students/history/:admNo").get(getStudentHistory);
+
 router.route("/students-going-to-hospital").get(getStudentsGoingToHospital);
 
 router.route("/student-full-entry").post(studentFullEntry);
@@ -84,6 +88,8 @@ router.route("/student-update-entry").post(updateStudentRecord);
 // Staff
 
 router.route("/staff/:idNo").get(getStaffMemberByID);
+
+router.route("/staff/history/:idNo").get(getStaffHistory);
 
 router.route("/staff-create-entry").post(createStaffRecord);
 

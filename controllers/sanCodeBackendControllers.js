@@ -144,6 +144,22 @@ const getStudentByAdmissionNumber = async (req, res) => {
   res.json(data[0]);
 };
 
+// Fetch Students History
+const getStudentHistory = async (req, res) => {
+  const admNo = parseInt(req.params.admNo);
+
+  // Implemented By Functions And Procudures - Really Simple and Efficient Implementation
+  const { data, error } = await supabase.rpc("get_student_history", {
+    student_admno: admNo,
+  });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json(data);
+};
+
 // Endpoint to get students going to the hospital
 const getStudentsGoingToHospital = async (req, res) => {
   // SQLITE
@@ -485,6 +501,21 @@ const getStaffMemberByID = async (req, res) => {
   }
 
   res.status(200).json(data);
+};
+
+// Endopoint to fetch staff member's history
+const getStaffHistory = async (req, res) => {
+  let idNo = parseInt(req.params.idNo);
+
+  const { data, error } = await supabase.rpc("get_staff_history", {
+    staff_idno: idNo,
+  });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json(data);
 };
 
 //Endpoint to create a record for a staff member
@@ -1394,7 +1425,9 @@ module.exports = {
   getReportData,
   getStaffData,
   getStaffMemberByID,
+  getStaffHistory,
   getStudentByAdmissionNumber,
+  getStudentHistory,
   getStudentData,
   newStudents,
   staffFullEntry,
