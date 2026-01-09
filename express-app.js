@@ -42,7 +42,6 @@
 //  | $$    $$ \$$    $$  \$$  $$ \$$     \ \$$      |  $$           |  $$           |  $$           |  $$           | $$     \ \$$  \$$$| $$     \      | $$
 //   \$$$$$$$   \$$$$$$$   \$$$$   \$$$$$$$           \$$             \$$             \$$             \$$             \$$$$$$$$  \$$$$$$  \$$$$$$$$       \$$
 
-const bodyParser = require("body-parser");
 const cors = require("cors");
 const fs = require("fs");
 const sanCodeBackendRoutes = require("./routes/sanCodeBackendRoutes.js");
@@ -57,7 +56,6 @@ module.exports = { app };
 
 app.use(cors());
 app.use(express.json());
-app.use(bodyParser.json());
 
 const startOfToday = moment().format("dddd_Do_MMMM_YYYY");
 const accessLogStream = fs.createWriteStream(

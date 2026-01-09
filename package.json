@@ -28,7 +28,7 @@
     "all": "^0.0.0",
     "axios": "^1.7.4",
     "babel-jest": "^29.7.0",
-    "body-parser": "^1.20.2",
+    "body-parser": "^1.20.4",
     "cors": "^2.8.5",
     "cross-env": "^7.0.3",
     "dotenv": "^16.3.1",
