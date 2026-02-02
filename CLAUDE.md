@@ -32,9 +32,12 @@ Importing ~600 Grade 10 students from Excel admission files into sanCodeStudent 
 - Arts & Sports: 2026-02-02 - 58 parsed, 16 imported, 42 duplicates
 - Social Sciences: 2026-02-02 - 117 parsed, 50 imported, 67 duplicates
 - STEM: 2026-02-02 - 402 parsed, 228 imported, 174 duplicates
-- Merge: Pending
+- Merge: 2026-02-02 - All branches merged to main, worktrees removed
 
 ## Notes
 - Duplicates are students who already existed in the database (by admNo)
 - All imports ran in parallel via 3 git worktrees
 - New columns (pathway, house, subjectCombination) populated for all imported students
+
+## Fixes Applied
+- **STEM class fix (2026-02-02)**: STEM Excel summary sheet had null class values. Fixed by reading class assignments from individual sheets (10H, 10K, 10M, 10N, 10Q, 10R, 10S, 10T, 10W, 10G). Updated 228 STEM students with correct class values.
