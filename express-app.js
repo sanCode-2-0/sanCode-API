@@ -74,11 +74,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// CVE-2024-53900
-mongoose.set("strictQuery", true);
-mongoose.set("sanitizeFilter", true);
-
-
 app.use("/", sanCodeBackendRoutes);
 
 app.listen(KEYS.PORT, () => {

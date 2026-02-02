@@ -59,12 +59,14 @@ const {
   getStudentData,
   getStudentsGoingToHospital,
   newStudents,
+  nonBusherianEntry,
   staffFullEntry,
   staffQuickUpdate,
   studentFullEntry,
   studentQuickUpdate,
   updateReport,
   updateStudentRecord,
+  updateStudentProfile,
 } = require("../controllers/sanCodeBackendControllers.js");
 
 const router = Router();
@@ -84,6 +86,10 @@ router.route("/student-quick-update").post(studentQuickUpdate);
 router.route("/student-create-entry").post(createStudentRecord);
 
 router.route("/student-update-entry").post(updateStudentRecord);
+
+router.route("/student-profile/:admNo").patch(updateStudentProfile);
+
+router.route("/non-busherian-entry").post(nonBusherianEntry);
 
 // Staff
 

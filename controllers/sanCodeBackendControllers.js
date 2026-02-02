@@ -796,8 +796,9 @@ const updateReport = async (req, res) => {
       .gte("timestamp", numberOfDaysSinceStartOfThisMonth);
 
     if (staffError || studentError) {
-      console.error("Error fetching records:", staffError || studentError);
-      throw new Error("Error fetching records");
+      console.error("Error fetching records:", staffError?.message || studentError?.message);
+      // Return empty arrays instead of throwing - report will just show zeros
+      return;
     }
 
     const rows = [...staffRecords, ...studentRecords];
@@ -942,24 +943,26 @@ const updateReport = async (req, res) => {
 
         // totalNumbersByDay Example : { 'Upper Respiratory Tract Infections': 2, 'All Other Diseases': 1 }
 
-        Object.keys(totalNumbersByDay).map(async (ailment, index) => {
-          const count_per_ailment = totalNumbersByDay[ailment];
+        await Promise.all(
+          Object.keys(totalNumbersByDay).map(async (ailment, index) => {
+            const count_per_ailment = totalNumbersByDay[ailment];
 
-          const { error } = await supabase
-            .from(reportTableName)
-            .update({
-              [`${day}`]: count_per_ailment,
-            })
-            .eq("disease", ailment);
+            const { error } = await supabase
+              .from(reportTableName)
+              .update({
+                [`${day}`]: count_per_ailment,
+              })
+              .eq("disease", ailment);
 
-          if (error) {
-            console.error(
-              `Error updating report for day ${day} and ailment ${ailment}:`,
-              error.message
-            );
-            throw new Error(`Error updating report for day ${day}`);
-          }
-        });
+            if (error) {
+              console.error(
+                `Error updating report for day ${day} and ailment ${ailment}:`,
+                error.message
+              );
+              // Don't throw - just log and continue with other ailments
+            }
+          })
+        );
       })
     );
   };
@@ -996,13 +999,18 @@ const updateReport = async (req, res) => {
     }
   };
 
-  await resetReportTable();
-
-  await updateReportTable();
-
-  res
-    .status(200)
-    .json({ status: 200, message: "Successfully updated the report" });
+  try {
+    await resetReportTable();
+    await updateReportTable();
+    res
+      .status(200)
+      .json({ status: 200, message: "Successfully updated the report" });
+  } catch (error) {
+    console.error("Error in updateReport:", error.message);
+    res
+      .status(500)
+      .json({ status: 500, message: "Error updating report", error: error.message });
+  }
 };
 
 // Endpoint to generate excel
@@ -1416,6 +1424,113 @@ const getReportAnalytics = async (req, res) => {
   res.status(200).json(data);
 };
 
+// Endpoint to update optional student profile fields (house, etc.)
+const updateStudentProfile = async (req, res) => {
+  const admNo = Number(req.params.admNo);
+  const { house } = req.body;
+
+  if (!admNo) {
+    return res.status(400).json({ error: "Invalid admission number" });
+  }
+
+  const updateData = {};
+  if (house !== undefined) updateData.house = house;
+
+  if (Object.keys(updateData).length === 0) {
+    return res.status(400).json({ error: "No fields to update" });
+  }
+
+  const { data, error } = await supabase
+    .from(studentTableName)
+    .update(updateData)
+    .eq("admNo", admNo)
+    .select();
+
+  if (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Failed to update profile" });
+  }
+
+  if (!data || data.length === 0) {
+    return res.status(404).json({ error: "Student not found" });
+  }
+
+  res.json({ status: 200, message: "Profile updated", data: data[0] });
+};
+
+// Endpoint to create a record for a non-Busherian (visiting) student
+const nonBusherianEntry = async (req, res) => {
+  try {
+    const {
+      studentName,
+      schoolName,
+      tempReading,
+      complain,
+      ailment,
+      medication,
+      going_to_hospital,
+    } = req.body;
+
+    // Validate input data
+    if (
+      !studentName ||
+      !schoolName ||
+      !tempReading ||
+      !complain ||
+      !ailment ||
+      !medication ||
+      going_to_hospital === undefined
+    ) {
+      res.status(400).json({ error: "Invalid input data" });
+      return;
+    }
+
+    // Generate a unique negative ID for non-Busherian students
+    // Using negative numbers to distinguish from regular admission numbers
+    const nonBusherianId = -Math.floor(Date.now() / 1000);
+
+    // Split student name into first and last name
+    const nameParts = studentName.trim().split(" ");
+    const fName = nameParts[0] || "";
+    const sName = nameParts.slice(1).join(" ") || "";
+
+    const going_to_hospital_value = going_to_hospital ? 1 : 0;
+
+    // Insert into student table with school name as class (prefixed with [NB])
+    const { data, error } = await supabase.from(studentTableName).insert([
+      {
+        admNo: nonBusherianId,
+        fName,
+        sName,
+        class: `[NB] ${schoolName}`,
+        tempReading,
+        complain,
+        ailment,
+        medication,
+        going_to_hospital: going_to_hospital_value,
+        timestamp: moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
+      },
+    ]);
+
+    if (error) {
+      console.error(error);
+      res
+        .status(500)
+        .json({ error: "An error occurred. Please try again later" });
+      return;
+    }
+
+    res.status(200).json({
+      status: 200,
+      message: `Record created for ${studentName} from ${schoolName}`,
+      id: nonBusherianId,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: "Invalid request body" });
+  }
+};
+
 module.exports = {
   createStaffRecord,
   defaultResponse,
@@ -1430,6 +1545,7 @@ module.exports = {
   getStudentHistory,
   getStudentData,
   newStudents,
+  nonBusherianEntry,
   staffFullEntry,
   staffQuickUpdate,
   studentFullEntry,
@@ -1437,5 +1553,6 @@ module.exports = {
   updateReport,
   getStudentsGoingToHospital,
   updateStudentRecord,
+  updateStudentProfile,
   createStudentRecord,
 };

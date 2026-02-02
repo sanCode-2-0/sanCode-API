@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(test:*)",
+      "Bash(file:*)",
+      "Bash(ln:*)",
+      "Bash(node scripts/import-students.js:*)",
+      "Bash(node scripts/fix-stem-classes.js:*)",
+      "Bash(node scripts/check-classes.js:*)",
+      "Bash(node scripts/verify-a1.js:*)",
+      "Bash(node -e:*)",
+      "Bash(tree:*)"
+    ]
+  }
+}
