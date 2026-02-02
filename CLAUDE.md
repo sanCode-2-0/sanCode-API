@@ -41,3 +41,4 @@ Importing ~600 Grade 10 students from Excel admission files into sanCodeStudent 
 
 ## Fixes Applied
 - **STEM class fix (2026-02-02)**: STEM Excel summary sheet had null class values. Fixed by reading class assignments from individual sheets (10H, 10K, 10M, 10N, 10Q, 10R, 10S, 10T, 10W, 10G). Updated 228 STEM students with correct class values.
+- **Update existing students (2026-02-02)**: Initial import skipped duplicates without updating them. Created update script to populate pathway, house, subjectCombination, and class for all existing students. Updated 678 total students (58 Arts & Sports + 117 Social Sciences + 503 STEM). Total students with pathway: 663.
