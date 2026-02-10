@@ -47,7 +47,11 @@ const {
   createStaffRecord,
   createStudentRecord,
   defaultResponse,
+  backfillArchivedReport,
+  exportReportExcel,
   generateExcel,
+  getArchivedMonths,
+  getArchivedReport,
   getDiseaseNames,
   getReportAnalytics,
   getReportData,
@@ -111,6 +115,8 @@ router.route("/update-report").get(updateReport);
 
 router.route("/generate-excel").get(generateExcel);
 
+router.route("/export-report-excel").get(exportReportExcel);
+
 router.route("/new-students").post(newStudents);
 
 router.route("/disease").get(getDiseaseNames);
@@ -118,6 +124,10 @@ router.route("/disease").get(getDiseaseNames);
 router.route("/report").get(getReportData);
 
 router.route("/report-analytics").get(getReportAnalytics);
+
+router.route("/archived-months").get(getArchivedMonths);
+router.route("/archived-report/:month").get(getArchivedReport);
+router.route("/backfill-archive/:month").post(backfillArchivedReport);
 
 router.route("/download-sqlite-database").get((req, res) => {
   // C:\Users\Briane\source\repos\sanCode-API\database\san-code.sqlite

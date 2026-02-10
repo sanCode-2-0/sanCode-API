@@ -783,228 +783,202 @@ const getStaffData = async (req, res) => {
 };
 
 // Endpoint to update report data
+// Optimized: 1 bulk reset + 1 parallel update per disease (instead of 1 per day×ailment)
+// Uses sanCodeStudent_history for accurate visit counts & re-attendance tracking
 const updateReport = async (req, res) => {
-  const updateReportTable = async () => {
-    const numberOfDaysSinceStartOfThisMonth = moment()
+  try {
+    const monthStart = moment()
       .startOf("month")
       .format("YYYY-MM-DD HH:mm:ss");
 
-    const { data: staffRecords, error: staffError } = await supabase
-      .from(staffTableName)
-      .select("*")
-      .gte("timestamp", numberOfDaysSinceStartOfThisMonth);
+    // 1. Fetch from HISTORY tables (each row = one visit) for accurate counts
+    // History tables are populated by DB triggers on every update
+    const [staffHistoryResult, studentHistoryResult] = await Promise.all([
+      supabase
+        .from("sanCodeStaff_history")
+        .select("*")
+        .gte("timestamp", monthStart)
+        .neq("ailment", ""),
+      supabase
+        .from("sanCodeStudent_history")
+        .select("*")
+        .gte("timestamp", monthStart)
+        .neq("ailment", ""),
+    ]);
 
-    const { data: studentRecords, error: studentError } = await supabase
-      .from(studentTableName)
-      .select("*")
-      .gte("timestamp", numberOfDaysSinceStartOfThisMonth);
-
-    if (staffError || studentError) {
-      console.error("Error fetching records:", staffError?.message || studentError?.message);
-      // Return empty arrays instead of throwing - report will just show zeros
-      return;
+    if (staffHistoryResult.error || studentHistoryResult.error) {
+      console.error(
+        "Error fetching records:",
+        staffHistoryResult.error?.message || studentHistoryResult.error?.message
+      );
+      return res
+        .status(500)
+        .json({ status: 500, message: "Error fetching records" });
     }
 
-    const rows = [...staffRecords, ...studentRecords];
+    // Combine all visit records — each row is a single visit
+    const rows = [
+      ...(studentHistoryResult.data || []),
+      ...(staffHistoryResult.data || []),
+    ];
 
-    const groupRecordsByDay = rows.reduce((acc, record) => {
-      const date = moment(record.timestamp).date();
+    // 2. Build disease → { day: count } matrix in memory
+    const diseaseMatrix = {};
 
-      if (!acc[date]) {
-        acc[date] = [];
-      }
+    rows.forEach((record) => {
+      const day = moment(record.timestamp).date();
+      const ailment = record.ailment;
+      if (!ailment) return;
 
-      acc[date].push(record);
+      if (!diseaseMatrix[ailment]) diseaseMatrix[ailment] = {};
+      diseaseMatrix[ailment][day] = (diseaseMatrix[ailment][day] || 0) + 1;
+    });
 
-      return acc;
-    }, {});
-
-    dev_mode && console.log("groupRecordsByDay", groupRecordsByDay);
-
-    const groupAilmentTotalNumbersByDay = Object.keys(groupRecordsByDay).reduce(
-      (acc, day) => {
-        acc[day] = groupRecordsByDay[day].reduce((acc, record) => {
-          const { ailment } = record;
-
-          if (!acc[ailment]) {
-            acc[ailment] = 1;
-          } else {
-            acc[ailment]++;
-          }
-
-          return acc;
-        }, {});
-
-        return acc;
-      },
-      {}
-    );
-
-    // Helper to get patient ID (students use admNo, staff use idNo)
-    const getPatientId = (record) => {
-      return record.admNo !== undefined
+    // 3. Calculate First/Re-Attendance by day
+    // Group by patient+ailment. First visit in the month = first attendance,
+    // subsequent visits by same patient for same ailment = re-attendance.
+    const getPatientId = (record) =>
+      record.admNo !== undefined
         ? `student_${record.admNo}`
         : `staff_${record.idNo}`;
-    };
 
-    // Group by patient + ailment for First/Re-Attendance calculation
-    // MOH 705 Logic: First Attendance = patient's FIRST visit for a specific ailment in the month
-    //                Re-Attendance = SUBSEQUENT visits by SAME patient for SAME ailment
-    const groupByPatientAndAilment = rows.reduce((acc, record) => {
-      const patientId = getPatientId(record);
-      const key = `${patientId}_${record.ailment}`;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(record);
-      return acc;
-    }, {});
+    const patientAilmentGroups = {};
+    rows.forEach((record) => {
+      if (!record.ailment) return;
+      const key = `${getPatientId(record)}_${record.ailment}`;
+      if (!patientAilmentGroups[key]) patientAilmentGroups[key] = [];
+      patientAilmentGroups[key].push(record);
+    });
 
-    // Calculate First Attendance and Re-Attendance by day
-    const groupFirstAttendanceNumbersByDay = {};
-    const groupReAttendanceNumbersByDay = {};
+    const firstAttByDay = {};
+    const reAttByDay = {};
 
-    Object.values(groupByPatientAndAilment).forEach((records) => {
-      // Sort records by timestamp to determine which is first
+    Object.values(patientAilmentGroups).forEach((records) => {
       const sorted = [...records].sort(
         (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
       );
-
       sorted.forEach((record, index) => {
         const day = moment(record.timestamp).date();
         if (index === 0) {
-          // First visit for this patient+ailment = First Attendance
-          groupFirstAttendanceNumbersByDay[day] =
-            (groupFirstAttendanceNumbersByDay[day] || 0) + 1;
+          firstAttByDay[day] = (firstAttByDay[day] || 0) + 1;
         } else {
-          // Subsequent visits for this patient+ailment = Re-Attendance
-          groupReAttendanceNumbersByDay[day] =
-            (groupReAttendanceNumbersByDay[day] || 0) + 1;
+          reAttByDay[day] = (reAttByDay[day] || 0) + 1;
         }
       });
     });
 
-    // Calculate groupReferralsByDay - count all referrals for their respective day
-    // (removed todayDate check - referrals should count for any day in the month)
-    const groupReferralsByDay = Object.keys(groupRecordsByDay).reduce(
-      (acc, day) => {
-        acc[day] = groupRecordsByDay[day].reduce((count, record) => {
-          return count + (record.going_to_hospital === 1 ? 1 : 0);
-        }, 0);
-        return acc;
-      },
-      {}
-    );
-
-    dev_mode && console.log(groupFirstAttendanceNumbersByDay);
-    dev_mode && console.log(groupReAttendanceNumbersByDay);
-    dev_mode && console.log(groupReferralsByDay);
-
-    // Merge groupFirstAttendanceNumbersByDay into groupAilmentTotalNumbersByDay
-    Object.keys(groupFirstAttendanceNumbersByDay).forEach((day) => {
-      const firstAttendanceCount = groupFirstAttendanceNumbersByDay[day];
-      if (!groupAilmentTotalNumbersByDay[day]) {
-        groupAilmentTotalNumbersByDay[day] = {};
+    // 4. Calculate referrals by day
+    const referralsByDay = {};
+    rows.forEach((record) => {
+      if (record.going_to_hospital === 1) {
+        const day = moment(record.timestamp).date();
+        referralsByDay[day] = (referralsByDay[day] || 0) + 1;
       }
-      groupAilmentTotalNumbersByDay[day]["NO. OF FIRST ATTENDANCES"] =
-        firstAttendanceCount;
     });
 
-    // Merge groupReAttendanceNumbersByDay into groupAilmentTotalNumbersByDay
-    Object.keys(groupReAttendanceNumbersByDay).forEach((day) => {
-      const reAttendanceCount = groupReAttendanceNumbersByDay[day];
-      if (!groupAilmentTotalNumbersByDay[day]) {
-        groupAilmentTotalNumbersByDay[day] = {};
-      }
-      groupAilmentTotalNumbersByDay[day]["RE-ATTENDANCES"] = reAttendanceCount;
-    });
+    // Merge computed rows into the disease matrix
+    if (Object.keys(firstAttByDay).length > 0) {
+      diseaseMatrix["NO. OF FIRST ATTENDANCES"] = firstAttByDay;
+    }
+    if (Object.keys(reAttByDay).length > 0) {
+      diseaseMatrix["RE-ATTENDANCES"] = reAttByDay;
+    }
+    if (Object.keys(referralsByDay).length > 0) {
+      diseaseMatrix["Referrals to other health facility"] = referralsByDay;
+    }
 
-    // Merge groupReferralsByDay into groupAilmentTotalNumbersByDay
-    Object.keys(groupReferralsByDay).forEach((day) => {
-      const referralCount = groupReferralsByDay[day];
-      if (!groupAilmentTotalNumbersByDay[day]) {
-        groupAilmentTotalNumbersByDay[day] = {};
-      }
-      groupAilmentTotalNumbersByDay[day]["Referrals to other health facility"] =
-        referralCount;
-    });
+    dev_mode && console.log("diseaseMatrix entries:", Object.keys(diseaseMatrix).length);
 
-    dev_mode &&
-      console.log(
-        "groupAilmentTotalNumbersByDay",
-        groupAilmentTotalNumbersByDay
-      );
+    // 5. Auto-archive: before resetting, check if previous month needs archiving
+    const prevMonth = moment().subtract(1, "month").startOf("month").format("YYYY-MM-DD");
+    const { data: existingArchive } = await supabase
+      .from("archived_monthly_disease_report")
+      .select("disease")
+      .eq("report_month", prevMonth)
+      .limit(1);
 
-    // Update report table with groupAilmentTotalNumbersByDay
-    await Promise.all(
-      Object.keys(groupAilmentTotalNumbersByDay).map(async (day, index) => {
-        const totalNumbersByDay = Object.keys(
-          groupAilmentTotalNumbersByDay[day]
-        ).reduce((acc, ailment) => {
-          acc[ailment] = groupAilmentTotalNumbersByDay[day][ailment];
-          return acc;
-        }, {});
+    if (!existingArchive || existingArchive.length === 0) {
+      // Previous month not archived yet — copy current sanCodeReport into archive
+      const { data: currentReport } = await supabase
+        .from(reportTableName)
+        .select("*");
 
-        // totalNumbersByDay Example : { 'Upper Respiratory Tract Infections': 2, 'All Other Diseases': 1 }
+      if (currentReport && currentReport.length > 0) {
+        // Check if current report has any non-zero data worth archiving
+        const hasData = currentReport.some((row) => {
+          for (let d = 1; d <= 31; d++) {
+            if (Number(row[d]) > 0) return true;
+          }
+          return false;
+        });
 
-        await Promise.all(
-          Object.keys(totalNumbersByDay).map(async (ailment, index) => {
-            const count_per_ailment = totalNumbersByDay[ailment];
-
-            const { error } = await supabase
-              .from(reportTableName)
-              .update({
-                [`${day}`]: count_per_ailment,
-              })
-              .eq("disease", ailment);
-
-            if (error) {
-              console.error(
-                `Error updating report for day ${day} and ailment ${ailment}:`,
-                error.message
-              );
-              // Don't throw - just log and continue with other ailments
+        if (hasData) {
+          const archiveRows = currentReport.map((row) => {
+            const archiveRow = { report_month: prevMonth, disease: row.disease };
+            for (let d = 1; d <= 31; d++) {
+              archiveRow[`${d}`] = Number(row[`${d}`]) || 0;
             }
-          })
-        );
-      })
-    );
-  };
+            return archiveRow;
+          });
 
-  const resetReportTable = async () => {
-    const today = moment().date();
-    const lastDayOfMonth = moment().endOf("month").date();
+          const { error: archiveError } = await supabase
+            .from("archived_monthly_disease_report")
+            .insert(archiveRows);
 
-    try {
-      for (let day = today; day <= lastDayOfMonth; day++) {
-        const updateData = {
-          [`${day}`]: 0,
-        };
-
-        // Perform update for each day using Supabase
-        // Use .neq with impossible value to match all rows
-        const { error } = await supabase
-          .from(reportTableName)
-          .update(updateData)
-          .neq("disease", "___IMPOSSIBLE_VALUE___");
-
-        if (error) {
-          console.error(
-            `Error resetting report for day ${day}:`,
-            error.message
-          );
-          throw new Error(`Error resetting report for day ${day}`);
+          if (archiveError) {
+            console.error("Error archiving report:", archiveError.message);
+            // Don't throw — archiving failure shouldn't block the update
+          } else {
+            dev_mode && console.log(`Archived report for ${prevMonth}`);
+          }
         }
       }
+    }
 
-      console.log("Report table reset successfully");
-    } catch (error) {
-      console.error("Error resetting report table:", error.message);
+    // 6. Single bulk reset: set ALL 31 day columns to 0 for ALL rows in one call
+    const resetData = {};
+    for (let day = 1; day <= 31; day++) {
+      resetData[`${day}`] = 0;
+    }
+
+    const { error: resetError } = await supabase
+      .from(reportTableName)
+      .update(resetData)
+      .neq("disease", "___IMPOSSIBLE_VALUE___");
+
+    if (resetError) {
+      console.error("Error resetting report:", resetError.message);
       throw new Error("Error resetting report table");
     }
-  };
 
-  try {
-    await resetReportTable();
-    await updateReportTable();
+    // 6. One update per disease, all in parallel
+    // Each update sets all 31 day columns at once
+    const updatePromises = Object.entries(diseaseMatrix).map(
+      ([disease, dayCounts]) => {
+        const updateData = {};
+        for (let day = 1; day <= 31; day++) {
+          if (dayCounts[day]) {
+            updateData[`${day}`] = dayCounts[day];
+          }
+        }
+
+        return supabase
+          .from(reportTableName)
+          .update(updateData)
+          .eq("disease", disease)
+          .then(({ error }) => {
+            if (error) {
+              console.error(
+                `Error updating report for ${disease}:`,
+                error.message
+              );
+            }
+          });
+      }
+    );
+
+    await Promise.all(updatePromises);
+
     res
       .status(200)
       .json({ status: 200, message: "Successfully updated the report" });
@@ -1013,6 +987,177 @@ const updateReport = async (req, res) => {
     res
       .status(500)
       .json({ status: 500, message: "Error updating report", error: error.message });
+  }
+};
+
+// Get list of available archived months
+const getArchivedMonths = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("archived_monthly_disease_report")
+      .select("report_month")
+      .order("report_month", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Error fetching archived months" });
+    }
+
+    // Deduplicate months
+    const uniqueMonths = [...new Set(data.map((r) => r.report_month))];
+    res.status(200).json(uniqueMonths);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error fetching archived months" });
+  }
+};
+
+// Get archived report for a specific month (YYYY-MM-DD format, first of month)
+const getArchivedReport = async (req, res) => {
+  try {
+    const { month } = req.params; // e.g. "2025-01-01"
+
+    const { data, error } = await supabase
+      .from("archived_monthly_disease_report")
+      .select("*")
+      .eq("report_month", month);
+
+    if (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Error fetching archived report" });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: "No archived report for this month" });
+    }
+
+    res.status(200).json(data);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error fetching archived report" });
+  }
+};
+
+// Backfill: reconstruct a past month's report from history tables and archive it
+const backfillArchivedReport = async (req, res) => {
+  try {
+    const { month } = req.params; // e.g. "2025-01-01"
+    const targetStart = moment(month).startOf("month");
+    const targetEnd = moment(month).endOf("month");
+
+    if (!targetStart.isValid() || targetStart.isSameOrAfter(moment().startOf("month"))) {
+      return res.status(400).json({ error: "Invalid or current/future month" });
+    }
+
+    // Check if already archived
+    const { data: existing } = await supabase
+      .from("archived_monthly_disease_report")
+      .select("disease")
+      .eq("report_month", targetStart.format("YYYY-MM-DD"))
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      return res.status(200).json({ message: "Month already archived", skipped: true });
+    }
+
+    const startStr = targetStart.format("YYYY-MM-DD HH:mm:ss");
+    const endStr = targetEnd.format("YYYY-MM-DD HH:mm:ss");
+
+    // Fetch history for that month
+    const [staffHist, studentHist] = await Promise.all([
+      supabase
+        .from("sanCodeStaff_history")
+        .select("*")
+        .gte("timestamp", startStr)
+        .lte("timestamp", endStr)
+        .neq("ailment", ""),
+      supabase
+        .from("sanCodeStudent_history")
+        .select("*")
+        .gte("timestamp", startStr)
+        .lte("timestamp", endStr)
+        .neq("ailment", ""),
+    ]);
+
+    if (staffHist.error || studentHist.error) {
+      return res.status(500).json({ error: "Error fetching history" });
+    }
+
+    const rows = [...(studentHist.data || []), ...(staffHist.data || [])];
+
+    // Build disease matrix
+    const diseaseMatrix = {};
+    rows.forEach((record) => {
+      const day = moment(record.timestamp).date();
+      const ailment = record.ailment;
+      if (!ailment) return;
+      if (!diseaseMatrix[ailment]) diseaseMatrix[ailment] = {};
+      diseaseMatrix[ailment][day] = (diseaseMatrix[ailment][day] || 0) + 1;
+    });
+
+    // First/Re-Attendance
+    const getPatientId = (record) =>
+      record.admNo !== undefined ? `student_${record.admNo}` : `staff_${record.idNo}`;
+
+    const patientAilmentGroups = {};
+    rows.forEach((record) => {
+      if (!record.ailment) return;
+      const key = `${getPatientId(record)}_${record.ailment}`;
+      if (!patientAilmentGroups[key]) patientAilmentGroups[key] = [];
+      patientAilmentGroups[key].push(record);
+    });
+
+    const firstAttByDay = {};
+    const reAttByDay = {};
+    Object.values(patientAilmentGroups).forEach((records) => {
+      const sorted = [...records].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      sorted.forEach((record, index) => {
+        const day = moment(record.timestamp).date();
+        if (index === 0) firstAttByDay[day] = (firstAttByDay[day] || 0) + 1;
+        else reAttByDay[day] = (reAttByDay[day] || 0) + 1;
+      });
+    });
+
+    // Referrals
+    const referralsByDay = {};
+    rows.forEach((record) => {
+      if (record.going_to_hospital === 1) {
+        const day = moment(record.timestamp).date();
+        referralsByDay[day] = (referralsByDay[day] || 0) + 1;
+      }
+    });
+
+    if (Object.keys(firstAttByDay).length > 0) diseaseMatrix["NO. OF FIRST ATTENDANCES"] = firstAttByDay;
+    if (Object.keys(reAttByDay).length > 0) diseaseMatrix["RE-ATTENDANCES"] = reAttByDay;
+    if (Object.keys(referralsByDay).length > 0) diseaseMatrix["Referrals to other health facility"] = referralsByDay;
+
+    // Build archive rows — one per disease
+    const reportMonth = targetStart.format("YYYY-MM-DD");
+    const archiveRows = Object.entries(diseaseMatrix).map(([disease, dayCounts]) => {
+      const row = { report_month: reportMonth, disease };
+      for (let d = 1; d <= 31; d++) {
+        row[`${d}`] = dayCounts[d] || 0;
+      }
+      return row;
+    });
+
+    if (archiveRows.length === 0) {
+      return res.status(200).json({ message: "No data found for this month", count: 0 });
+    }
+
+    const { error: insertError } = await supabase
+      .from("archived_monthly_disease_report")
+      .insert(archiveRows);
+
+    if (insertError) {
+      console.error("Backfill insert error:", insertError.message);
+      return res.status(500).json({ error: "Error saving backfill" });
+    }
+
+    res.status(200).json({ message: `Backfilled ${archiveRows.length} rows for ${reportMonth}` });
+  } catch (error) {
+    console.error("Backfill error:", error.message);
+    res.status(500).json({ error: "Error during backfill" });
   }
 };
 
@@ -1632,7 +1777,11 @@ const nonBusherianEntry = async (req, res) => {
 module.exports = {
   createStaffRecord,
   defaultResponse,
+  backfillArchivedReport,
+  exportReportExcel,
   generateExcel,
+  getArchivedMonths,
+  getArchivedReport,
   getDiseaseNames,
   getReportAnalytics,
   getReportData,
