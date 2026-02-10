@@ -441,7 +441,7 @@ const createStudentRecord = async (req, res) => {
 
 // Endpoint to edit a student record for a student
 const updateStudentRecord = async (req, res) => {
-  const { admNo, fName, sName, class: className } = req.body;
+  const { admNo, fName, sName, class: className, graduationYear } = req.body;
 
   //Validate input
   if (!admNo || !fName || !sName || !className) {
@@ -451,9 +451,13 @@ const updateStudentRecord = async (req, res) => {
 
   // SUPABASE
   // Update the record for the student
+  const updateData = { fName, sName, class: className };
+  if (graduationYear !== undefined) {
+    updateData.graduationYear = graduationYear;
+  }
   const { data, error } = await supabase
     .from(studentTableName)
-    .update({ fName, sName, class: className })
+    .update(updateData)
     .eq("admNo", admNo)
     .select();
 
@@ -836,57 +840,55 @@ const updateReport = async (req, res) => {
       {}
     );
 
-    // Calculate groupFirstAttendanceNumbersByDay
-    const groupFirstAttendanceNumbersByDay = Object.keys(
-      groupRecordsByDay
-    ).reduce((acc, day) => {
-      acc[day] = groupRecordsByDay[day].reduce((innerAcc, record) => {
-        const { timestamp } = record;
-        const recordDate = new Date(timestamp).toDateString();
-        const todayDate = new Date().toDateString();
+    // Helper to get patient ID (students use admNo, staff use idNo)
+    const getPatientId = (record) => {
+      return record.admNo !== undefined
+        ? `student_${record.admNo}`
+        : `staff_${record.idNo}`;
+    };
 
-        if (recordDate !== todayDate) {
-          innerAcc += 1;
-        }
-
-        return innerAcc;
-      }, 0); // Initialize innerAcc to 0
+    // Group by patient + ailment for First/Re-Attendance calculation
+    // MOH 705 Logic: First Attendance = patient's FIRST visit for a specific ailment in the month
+    //                Re-Attendance = SUBSEQUENT visits by SAME patient for SAME ailment
+    const groupByPatientAndAilment = rows.reduce((acc, record) => {
+      const patientId = getPatientId(record);
+      const key = `${patientId}_${record.ailment}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(record);
       return acc;
     }, {});
 
-    // Calculate groupReAttendanceNumbersByDay
-    const groupReAttendanceNumbersByDay = Object.keys(groupRecordsByDay).reduce(
-      (acc, day) => {
-        acc[day] = groupRecordsByDay[day].reduce((innerAcc, record) => {
-          const { timestamp } = record;
-          const recordDate = new Date(timestamp).toDateString();
-          const todayDate = new Date().toDateString();
+    // Calculate First Attendance and Re-Attendance by day
+    const groupFirstAttendanceNumbersByDay = {};
+    const groupReAttendanceNumbersByDay = {};
 
-          if (recordDate === todayDate) {
-            innerAcc += 1;
-          }
+    Object.values(groupByPatientAndAilment).forEach((records) => {
+      // Sort records by timestamp to determine which is first
+      const sorted = [...records].sort(
+        (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+      );
 
-          return innerAcc;
-        }, 0); // Initialize innerAcc to 0
-        return acc;
-      },
-      {}
-    );
+      sorted.forEach((record, index) => {
+        const day = moment(record.timestamp).date();
+        if (index === 0) {
+          // First visit for this patient+ailment = First Attendance
+          groupFirstAttendanceNumbersByDay[day] =
+            (groupFirstAttendanceNumbersByDay[day] || 0) + 1;
+        } else {
+          // Subsequent visits for this patient+ailment = Re-Attendance
+          groupReAttendanceNumbersByDay[day] =
+            (groupReAttendanceNumbersByDay[day] || 0) + 1;
+        }
+      });
+    });
 
-    // Calculate groupReferralsByDay
+    // Calculate groupReferralsByDay - count all referrals for their respective day
+    // (removed todayDate check - referrals should count for any day in the month)
     const groupReferralsByDay = Object.keys(groupRecordsByDay).reduce(
       (acc, day) => {
-        acc[day] = groupRecordsByDay[day].reduce((innerAcc, record) => {
-          const { timestamp, going_to_hospital } = record;
-          const recordDate = new Date(timestamp).toDateString();
-          const todayDate = new Date().toDateString();
-
-          if (recordDate === todayDate && going_to_hospital === 1) {
-            innerAcc += 1;
-          }
-
-          return innerAcc;
-        }, 0); // Initialize innerAcc to 0
+        acc[day] = groupRecordsByDay[day].reduce((count, record) => {
+          return count + (record.going_to_hospital === 1 ? 1 : 0);
+        }, 0);
         return acc;
       },
       {}
@@ -978,10 +980,11 @@ const updateReport = async (req, res) => {
         };
 
         // Perform update for each day using Supabase
+        // Use .neq with impossible value to match all rows
         const { error } = await supabase
           .from(reportTableName)
           .update(updateData)
-          .eq("disease" /*Every ailment in list*/);
+          .neq("disease", "___IMPOSSIBLE_VALUE___");
 
         if (error) {
           console.error(
@@ -1180,6 +1183,100 @@ const generateExcel = async (req, res) => {
     res.send({
       status: "Error",
       message: "Something went wrong...",
+    });
+  }
+};
+
+// Endpoint to export MOH 705 Report as Excel
+const exportReportExcel = async (req, res) => {
+  try {
+    // Fetch all data from sanCodeReport table
+    const { data, error } = await supabase.from(reportTableName).select("*");
+
+    if (error) {
+      console.error(error);
+      return res.status(500).json({
+        error: 500,
+        message: "Error fetching report data from database",
+      });
+    }
+
+    // Create workbook and worksheet
+    const currentMonth = moment().format("MMMM");
+    const currentYear = moment().format("YYYY");
+    const fileName = `MOH_705_Report_${currentMonth}_${currentYear}`;
+    const workbook = new excelJS.Workbook();
+    const worksheet = workbook.addWorksheet(`MOH 705 - ${currentMonth} ${currentYear}`);
+
+    // Build columns: Disease, Days 1-31, Total
+    const columns = [{ header: "Disease", key: "disease", width: 40 }];
+    for (let day = 1; day <= 31; day++) {
+      columns.push({ header: `${day}`, key: `${day}`, width: 5 });
+    }
+    columns.push({ header: "Total", key: "total", width: 8 });
+    worksheet.columns = columns;
+
+    // Add rows from report data
+    data.forEach((record) => {
+      // Calculate total for each disease row
+      let total = 0;
+      for (let day = 1; day <= 31; day++) {
+        const dayValue = record[`${day}`] || 0;
+        total += Number(dayValue) || 0;
+      }
+
+      const rowData = { disease: record.disease, total };
+      for (let day = 1; day <= 31; day++) {
+        rowData[`${day}`] = record[`${day}`] || 0;
+      }
+      worksheet.addRow(rowData);
+    });
+
+    // Style header row
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFD3D3D3" },
+      };
+      cell.alignment = { horizontal: "center" };
+    });
+
+    // Style disease column
+    worksheet.getColumn("disease").eachCell((cell, rowNumber) => {
+      if (rowNumber > 1) {
+        cell.alignment = { horizontal: "left" };
+      }
+    });
+
+    // Style number cells
+    for (let col = 2; col <= 33; col++) {
+      worksheet.getColumn(col).eachCell((cell, rowNumber) => {
+        if (rowNumber > 1) {
+          cell.alignment = { horizontal: "center" };
+        }
+      });
+    }
+
+    // Set response headers for file download
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${fileName}.xlsx`
+    );
+
+    // Write to response
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("Error generating MOH 705 Excel:", error);
+    res.status(500).json({
+      error: 500,
+      message: "Error generating Excel file",
     });
   }
 };
@@ -1424,10 +1521,10 @@ const getReportAnalytics = async (req, res) => {
   res.status(200).json(data);
 };
 
-// Endpoint to update optional student profile fields (house, etc.)
+// Endpoint to update optional student profile fields (house, graduationYear, etc.)
 const updateStudentProfile = async (req, res) => {
   const admNo = Number(req.params.admNo);
-  const { house } = req.body;
+  const { house, graduationYear } = req.body;
 
   if (!admNo) {
     return res.status(400).json({ error: "Invalid admission number" });
@@ -1435,6 +1532,7 @@ const updateStudentProfile = async (req, res) => {
 
   const updateData = {};
   if (house !== undefined) updateData.house = house;
+  if (graduationYear !== undefined) updateData.graduationYear = graduationYear;
 
   if (Object.keys(updateData).length === 0) {
     return res.status(400).json({ error: "No fields to update" });
