@@ -71,6 +71,39 @@ const {
 const { KEYS } = require("../config/keys.js");
 const { supabase } = require("../config/supabase/config.js");
 const { dev_mode } = require("../dev_mode.js");
+const { parseMedications } = require("../helpers/medicationParser.js");
+const { deductMedicationStock } = require("./sanCodeMedicationController.js");
+
+// Helper to parse medication and deduct inventory stock in the background
+const triggerMedicationDeduction = async (medicationText, admNoOrIdNo, isStaff = false, nurseEmail = "clinic-nurse") => {
+  if (!medicationText || medicationText.toLowerCase() === "none") return;
+  try {
+    const items = parseMedications(medicationText);
+    if (items.length === 0) return;
+
+    const table = isStaff ? "sanCodeStaff_history" : "sanCodeStudent_history";
+    const filterCol = isStaff ? "idNo" : "admNo";
+
+    // Wait a brief moment to ensure DB trigger finished inserting into the history table
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const { data: latestHistory } = await supabase
+      .from(table)
+      .select("recordID")
+      .eq(filterCol, admNoOrIdNo)
+      .order("timestamp", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const historyId = latestHistory ? latestHistory.recordID : null;
+
+    for (const item of items) {
+      await deductMedicationStock(historyId, item.name, item.quantity, nurseEmail);
+    }
+  } catch (err) {
+    console.error(`[Deduction Trigger Error] for ${admNoOrIdNo}:`, err.message);
+  }
+};
 
 // Return name of the API if requested
 const defaultResponse = async (req, res) => {
@@ -140,8 +173,23 @@ const getStudentByAdmissionNumber = async (req, res) => {
     res.status(404).json({ error: "Student not found" });
     return;
   }
+  
+  // Calculate medication timing compliance
+  const studentRecord = data[0];
+  
+  // Fetch nurse schedule slots from database
+  const { data: scheduleSlots } = await supabase
+    .from("sanCodeNurse_schedule")
+    .select("*");
+
+  const { calculateMedicationTiming } = require("../helpers/medicationTimingHelper.js");
+  const timingInfo = calculateMedicationTiming(studentRecord, scheduleSlots || []);
+
   //Selecting the first record in the data array to prevent returning an array and prevent returning duplicate records
-  res.json(data[0]);
+  res.json({
+    ...studentRecord,
+    medicationTiming: timingInfo
+  });
 };
 
 // Fetch Students History
@@ -304,6 +352,8 @@ const studentFullEntry = async (req, res) => {
         res.status(404).json({ error: "Student not found" });
         return;
       }
+      updateReportInternal().catch(err => console.error("Async report update failed:", err));
+      triggerMedicationDeduction(medication, studentAdmNo, false, req.user?.email).catch(err => console.error(err));
       res.json({
         status: 200,
         message: `Record updated for ${studentAdmNo} successfully. ${new Date()
@@ -386,6 +436,8 @@ const studentQuickUpdate = async (req, res) => {
     res.status(404).json({ error: "Student not found" });
     return;
   }
+  updateReportInternal().catch(err => console.error("Async report update failed:", err));
+  triggerMedicationDeduction(medication, studentAdmNo, false, req.user?.email).catch(err => console.error(err));
   res.json({
     status: 200,
     message: `Record updated for ${studentAdmNo} successfully.`,
@@ -626,6 +678,8 @@ const staffFullEntry = async (req, res) => {
     return;
   }
 
+  updateReportInternal().catch(err => console.error("Async report update failed:", err));
+  triggerMedicationDeduction(medication, idNo, true, req.user?.email).catch(err => console.error(err));
   res.status(200).json({
     message: `Record updated for ${idNo} successfully.`,
   });
@@ -678,6 +732,8 @@ const staffQuickUpdate = async (req, res) => {
     return;
   }
 
+  updateReportInternal().catch(err => console.error("Async report update failed:", err));
+  triggerMedicationDeduction(medication, idNo, true, req.user?.email).catch(err => console.error(err));
   res.status(200).json({
     message: `Record updated for ${idNo} successfully.`,
   });
@@ -785,200 +841,199 @@ const getStaffData = async (req, res) => {
 // Endpoint to update report data
 // Optimized: 1 bulk reset + 1 parallel update per disease (instead of 1 per day×ailment)
 // Uses sanCodeStudent_history for accurate visit counts & re-attendance tracking
-const updateReport = async (req, res) => {
-  try {
-    const monthStart = moment()
-      .startOf("month")
-      .format("YYYY-MM-DD HH:mm:ss");
+async function updateReportInternal() {
+  const monthStart = moment()
+    .startOf("month")
+    .format("YYYY-MM-DD HH:mm:ss");
 
-    // 1. Fetch from HISTORY tables (each row = one visit) for accurate counts
-    // History tables are populated by DB triggers on every update
-    const [staffHistoryResult, studentHistoryResult] = await Promise.all([
-      supabase
-        .from("sanCodeStaff_history")
-        .select("*")
-        .gte("timestamp", monthStart)
-        .neq("ailment", ""),
-      supabase
-        .from("sanCodeStudent_history")
-        .select("*")
-        .gte("timestamp", monthStart)
-        .neq("ailment", ""),
-    ]);
+  // 1. Fetch from HISTORY tables (each row = one visit) for accurate counts
+  // History tables are populated by DB triggers on every update
+  const [staffHistoryResult, studentHistoryResult] = await Promise.all([
+    supabase
+      .from("sanCodeStaff_history")
+      .select("*")
+      .gte("timestamp", monthStart)
+      .neq("ailment", ""),
+    supabase
+      .from("sanCodeStudent_history")
+      .select("*")
+      .gte("timestamp", monthStart)
+      .neq("ailment", ""),
+  ]);
 
-    if (staffHistoryResult.error || studentHistoryResult.error) {
-      console.error(
-        "Error fetching records:",
-        staffHistoryResult.error?.message || studentHistoryResult.error?.message
-      );
-      return res
-        .status(500)
-        .json({ status: 500, message: "Error fetching records" });
-    }
+  if (staffHistoryResult.error || studentHistoryResult.error) {
+    const errMsg = staffHistoryResult.error?.message || studentHistoryResult.error?.message;
+    console.error("Error fetching records:", errMsg);
+    throw new Error(errMsg);
+  }
 
-    // Combine all visit records — each row is a single visit
-    const rows = [
-      ...(studentHistoryResult.data || []),
-      ...(staffHistoryResult.data || []),
-    ];
+  // Combine all visit records — each row is a single visit
+  const rows = [
+    ...(studentHistoryResult.data || []),
+    ...(staffHistoryResult.data || []),
+  ];
 
-    // 2. Build disease → { day: count } matrix in memory
-    const diseaseMatrix = {};
+  // 2. Build disease → { day: count } matrix in memory
+  const diseaseMatrix = {};
 
-    rows.forEach((record) => {
+  rows.forEach((record) => {
+    const day = moment(record.timestamp).date();
+    const ailment = record.ailment;
+    if (!ailment) return;
+
+    if (!diseaseMatrix[ailment]) diseaseMatrix[ailment] = {};
+    diseaseMatrix[ailment][day] = (diseaseMatrix[ailment][day] || 0) + 1;
+  });
+
+  // 3. Calculate First/Re-Attendance by day
+  // Group by patient+ailment. First visit in the month = first attendance,
+  // subsequent visits by same patient for same ailment = re-attendance.
+  const getPatientId = (record) =>
+    record.admNo !== undefined
+      ? `student_${record.admNo}`
+      : `staff_${record.idNo}`;
+
+  const patientAilmentGroups = {};
+  rows.forEach((record) => {
+    if (!record.ailment) return;
+    const key = `${getPatientId(record)}_${record.ailment}`;
+    if (!patientAilmentGroups[key]) patientAilmentGroups[key] = [];
+    patientAilmentGroups[key].push(record);
+  });
+
+  const firstAttByDay = {};
+  const reAttByDay = {};
+
+  Object.values(patientAilmentGroups).forEach((records) => {
+    const sorted = [...records].sort(
+      (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+    );
+    sorted.forEach((record, index) => {
       const day = moment(record.timestamp).date();
-      const ailment = record.ailment;
-      if (!ailment) return;
-
-      if (!diseaseMatrix[ailment]) diseaseMatrix[ailment] = {};
-      diseaseMatrix[ailment][day] = (diseaseMatrix[ailment][day] || 0) + 1;
-    });
-
-    // 3. Calculate First/Re-Attendance by day
-    // Group by patient+ailment. First visit in the month = first attendance,
-    // subsequent visits by same patient for same ailment = re-attendance.
-    const getPatientId = (record) =>
-      record.admNo !== undefined
-        ? `student_${record.admNo}`
-        : `staff_${record.idNo}`;
-
-    const patientAilmentGroups = {};
-    rows.forEach((record) => {
-      if (!record.ailment) return;
-      const key = `${getPatientId(record)}_${record.ailment}`;
-      if (!patientAilmentGroups[key]) patientAilmentGroups[key] = [];
-      patientAilmentGroups[key].push(record);
-    });
-
-    const firstAttByDay = {};
-    const reAttByDay = {};
-
-    Object.values(patientAilmentGroups).forEach((records) => {
-      const sorted = [...records].sort(
-        (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-      );
-      sorted.forEach((record, index) => {
-        const day = moment(record.timestamp).date();
-        if (index === 0) {
-          firstAttByDay[day] = (firstAttByDay[day] || 0) + 1;
-        } else {
-          reAttByDay[day] = (reAttByDay[day] || 0) + 1;
-        }
-      });
-    });
-
-    // 4. Calculate referrals by day
-    const referralsByDay = {};
-    rows.forEach((record) => {
-      if (record.going_to_hospital === 1) {
-        const day = moment(record.timestamp).date();
-        referralsByDay[day] = (referralsByDay[day] || 0) + 1;
+      if (index === 0) {
+        firstAttByDay[day] = (firstAttByDay[day] || 0) + 1;
+      } else {
+        reAttByDay[day] = (reAttByDay[day] || 0) + 1;
       }
     });
+  });
 
-    // Merge computed rows into the disease matrix
-    if (Object.keys(firstAttByDay).length > 0) {
-      diseaseMatrix["NO. OF FIRST ATTENDANCES"] = firstAttByDay;
+  // 4. Calculate referrals by day
+  const referralsByDay = {};
+  rows.forEach((record) => {
+    if (record.going_to_hospital === 1) {
+      const day = moment(record.timestamp).date();
+      referralsByDay[day] = (referralsByDay[day] || 0) + 1;
     }
-    if (Object.keys(reAttByDay).length > 0) {
-      diseaseMatrix["RE-ATTENDANCES"] = reAttByDay;
-    }
-    if (Object.keys(referralsByDay).length > 0) {
-      diseaseMatrix["Referrals to other health facility"] = referralsByDay;
-    }
+  });
 
-    dev_mode && console.log("diseaseMatrix entries:", Object.keys(diseaseMatrix).length);
+  // Merge computed rows into the disease matrix
+  if (Object.keys(firstAttByDay).length > 0) {
+    diseaseMatrix["NO. OF FIRST ATTENDANCES"] = firstAttByDay;
+  }
+  if (Object.keys(reAttByDay).length > 0) {
+    diseaseMatrix["RE-ATTENDANCES"] = reAttByDay;
+  }
+  if (Object.keys(referralsByDay).length > 0) {
+    diseaseMatrix["Referrals to other health facility"] = referralsByDay;
+  }
 
-    // 5. Auto-archive: before resetting, check if previous month needs archiving
-    const prevMonth = moment().subtract(1, "month").startOf("month").format("YYYY-MM-DD");
-    const { data: existingArchive } = await supabase
-      .from("archived_monthly_disease_report")
-      .select("disease")
-      .eq("report_month", prevMonth)
-      .limit(1);
+  dev_mode && console.log("diseaseMatrix entries:", Object.keys(diseaseMatrix).length);
 
-    if (!existingArchive || existingArchive.length === 0) {
-      // Previous month not archived yet — copy current sanCodeReport into archive
-      const { data: currentReport } = await supabase
-        .from(reportTableName)
-        .select("*");
+  // 5. Auto-archive: before resetting, check if previous month needs archiving
+  const prevMonth = moment().subtract(1, "month").startOf("month").format("YYYY-MM-DD");
+  const { data: existingArchive } = await supabase
+    .from("archived_monthly_disease_report")
+    .select("disease")
+    .eq("report_month", prevMonth)
+    .limit(1);
 
-      if (currentReport && currentReport.length > 0) {
-        // Check if current report has any non-zero data worth archiving
-        const hasData = currentReport.some((row) => {
+  if (!existingArchive || existingArchive.length === 0) {
+    // Previous month not archived yet — copy current sanCodeReport into archive
+    const { data: currentReport } = await supabase
+      .from(reportTableName)
+      .select("*");
+
+    if (currentReport && currentReport.length > 0) {
+      // Check if current report has any non-zero data worth archiving
+      const hasData = currentReport.some((row) => {
+        for (let d = 1; d <= 31; d++) {
+          if (Number(row[d]) > 0) return true;
+        }
+        return false;
+      });
+
+      if (hasData) {
+        const archiveRows = currentReport.map((row) => {
+          const archiveRow = { report_month: prevMonth, disease: row.disease };
           for (let d = 1; d <= 31; d++) {
-            if (Number(row[d]) > 0) return true;
+            archiveRow[`${d}`] = Number(row[`${d}`]) || 0;
           }
-          return false;
+          return archiveRow;
         });
 
-        if (hasData) {
-          const archiveRows = currentReport.map((row) => {
-            const archiveRow = { report_month: prevMonth, disease: row.disease };
-            for (let d = 1; d <= 31; d++) {
-              archiveRow[`${d}`] = Number(row[`${d}`]) || 0;
-            }
-            return archiveRow;
-          });
+        const { error: archiveError } = await supabase
+          .from("archived_monthly_disease_report")
+          .insert(archiveRows);
 
-          const { error: archiveError } = await supabase
-            .from("archived_monthly_disease_report")
-            .insert(archiveRows);
-
-          if (archiveError) {
-            console.error("Error archiving report:", archiveError.message);
-            // Don't throw — archiving failure shouldn't block the update
-          } else {
-            dev_mode && console.log(`Archived report for ${prevMonth}`);
-          }
+        if (archiveError) {
+          console.error("Error archiving report:", archiveError.message);
+          // Don't throw — archiving failure shouldn't block the update
+        } else {
+          dev_mode && console.log(`Archived report for ${prevMonth}`);
         }
       }
     }
+  }
 
-    // 6. Single bulk reset: set ALL 31 day columns to 0 for ALL rows in one call
-    const resetData = {};
-    for (let day = 1; day <= 31; day++) {
-      resetData[`${day}`] = 0;
-    }
+  // 6. Single bulk reset: set ALL 31 day columns to 0 for ALL rows in one call
+  const resetData = {};
+  for (let day = 1; day <= 31; day++) {
+    resetData[`${day}`] = 0;
+  }
 
-    const { error: resetError } = await supabase
-      .from(reportTableName)
-      .update(resetData)
-      .neq("disease", "___IMPOSSIBLE_VALUE___");
+  const { error: resetError } = await supabase
+    .from(reportTableName)
+    .update(resetData)
+    .neq("disease", "___IMPOSSIBLE_VALUE___");
 
-    if (resetError) {
-      console.error("Error resetting report:", resetError.message);
-      throw new Error("Error resetting report table");
-    }
+  if (resetError) {
+    console.error("Error resetting report:", resetError.message);
+    throw new Error("Error resetting report table");
+  }
 
-    // 6. One update per disease, all in parallel
-    // Each update sets all 31 day columns at once
-    const updatePromises = Object.entries(diseaseMatrix).map(
-      ([disease, dayCounts]) => {
-        const updateData = {};
-        for (let day = 1; day <= 31; day++) {
-          if (dayCounts[day]) {
-            updateData[`${day}`] = dayCounts[day];
-          }
+  // 6. One update per disease, all in parallel
+  // Each update sets all 31 day columns at once
+  const updatePromises = Object.entries(diseaseMatrix).map(
+    ([disease, dayCounts]) => {
+      const updateData = {};
+      for (let day = 1; day <= 31; day++) {
+        if (dayCounts[day]) {
+          updateData[`${day}`] = dayCounts[day];
         }
-
-        return supabase
-          .from(reportTableName)
-          .update(updateData)
-          .eq("disease", disease)
-          .then(({ error }) => {
-            if (error) {
-              console.error(
-                `Error updating report for ${disease}:`,
-                error.message
-              );
-            }
-          });
       }
-    );
 
-    await Promise.all(updatePromises);
+      return supabase
+        .from(reportTableName)
+        .update(updateData)
+        .eq("disease", disease)
+        .then(({ error }) => {
+          if (error) {
+            console.error(
+              `Error updating report for ${disease}:`,
+              error.message
+            );
+          }
+        });
+    }
+  );
 
+  await Promise.all(updatePromises);
+}
+
+const updateReport = async (req, res) => {
+  try {
+    await updateReportInternal();
     res
       .status(200)
       .json({ status: 200, message: "Successfully updated the report" });
@@ -1763,6 +1818,8 @@ const nonBusherianEntry = async (req, res) => {
       return;
     }
 
+    updateReportInternal().catch(err => console.error("Async report update failed:", err));
+    triggerMedicationDeduction(medication, nonBusherianId, false, req.user?.email).catch(err => console.error(err));
     res.status(200).json({
       status: 200,
       message: `Record created for ${studentName} from ${schoolName}`,

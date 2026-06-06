@@ -1,5 +1,6 @@
 import request from "supertest";
 import { app } from "../../../express-app.js";
+import { supabase } from "../../../config/supabase/config.js";
 const testAdmissionNumber = 13256;
 
 describe("Test GET /students/:admissionNumber", () => {
@@ -148,6 +149,10 @@ describe("Test POST /student-create-entry",() =>{
     sName: "sName",
     class: "2K",
   }
+
+  beforeEach(async () => {
+    await supabase.from("sanCodeStudent").delete().eq("admNo", 12111);
+  });
 
   //Status 204 - Updated with no meaningful return data
   test("Test status code returned ( 200 )", async () => {

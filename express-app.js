@@ -76,29 +76,31 @@ app.use((err, req, res, next) => {
 
 app.use("/", sanCodeBackendRoutes);
 
-app.listen(KEYS.PORT, () => {
-  const dir = `${KEYS.HOME}/Desktop/sanCode-Excel-Summaries`;
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  fs.access(dir, fs.constants.W_OK, (err) => {
-    if (err) {
-      console.error("No write permission");
+if (process.env.NODE_ENV !== "test") {
+  app.listen(KEYS.PORT, () => {
+    const dir = `${KEYS.HOME}/Desktop/sanCode-Excel-Summaries`;
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
-  });
 
-  //Create logs folder
-  const logsFolder = "logs";
-  if (!fs.existsSync(logsFolder)) {
-    fs.mkdirSync(logsFolder, { recursive: true });
-  }
+    fs.access(dir, fs.constants.W_OK, (err) => {
+      if (err) {
+        console.error("No write permission");
+      }
+    });
 
-  fs.writeFile(`./logs/${startOfToday}.log`, "", (err) => {
-    if (err) {
-      console.log(err);
+    //Create logs folder
+    const logsFolder = "logs";
+    if (!fs.existsSync(logsFolder)) {
+      fs.mkdirSync(logsFolder, { recursive: true });
     }
-  });
 
-  console.log(`Listening on Port ${KEYS.PORT}`);
-});
+    fs.writeFile(`./logs/${startOfToday}.log`, "", (err) => {
+      if (err) {
+        console.log(err);
+      }
+    });
+
+    console.log(`Listening on Port ${KEYS.PORT}`);
+  });
+}

@@ -72,6 +72,21 @@ const {
   updateStudentRecord,
   updateStudentProfile,
 } = require("../controllers/sanCodeBackendControllers.js");
+const { getAnalyticsData } = require("../controllers/sanCodeAnalyticsControllers.js");
+const { requestParentOTP, verifyParentOTP, getParentStudentHistory } = require("../controllers/sanCodeParentController.js");
+const { verifyParentToken } = require("../middleware/verifyParentToken.js");
+const { restockMedication } = require("../controllers/sanCodeMedicationController.js");
+const { initiateMockStkPush, verifyMpesaPayment } = require("../controllers/mpesaController.js");
+const {
+  getTeacherPasscode,
+  updateTeacherPasscode,
+  getNurseSchedule,
+  addNurseScheduleSlot,
+  deleteNurseScheduleSlot,
+  createFollowUp,
+  getStudentFollowUps,
+  verifyStudentForTeacher
+} = require("../controllers/sanCodeScheduleController.js");
 
 const router = Router();
 
@@ -125,6 +140,8 @@ router.route("/report").get(getReportData);
 
 router.route("/report-analytics").get(getReportAnalytics);
 
+router.route("/analytics/data").get(getAnalyticsData);
+
 router.route("/archived-months").get(getArchivedMonths);
 router.route("/archived-report/:month").get(getArchivedReport);
 router.route("/backfill-archive/:month").post(backfillArchivedReport);
@@ -133,5 +150,29 @@ router.route("/download-sqlite-database").get((req, res) => {
   // C:\Users\Briane\source\repos\sanCode-API\database\san-code.sqlite
   res.download("./database/san-code.sqlite");
 });
+
+// Secure Parent OTP Access routes
+router.route("/parents/request-otp").post(requestParentOTP);
+router.route("/parents/verify-otp").post(verifyParentOTP);
+router.route("/parents/records").get(verifyParentToken, getParentStudentHistory);
+
+// M-Pesa payments for parents
+router.route("/parents/mpesa-stkpush").post(initiateMockStkPush);
+router.route("/parents/mpesa-verify").post(verifyMpesaPayment);
+
+// Nurse schedule configuration
+router.route("/nurse/schedule").get(getNurseSchedule).post(addNurseScheduleSlot);
+router.route("/nurse/schedule/:id").delete(deleteNurseScheduleSlot);
+router.route("/nurse/settings/passcode").get(getTeacherPasscode).post(updateTeacherPasscode);
+
+// Student follow-ups / returns
+router.route("/nurse/followup").post(createFollowUp);
+router.route("/nurse/followup/:admNo").get(getStudentFollowUps);
+
+// Teacher portal validation
+router.route("/teachers/verify/:admNo").get(verifyStudentForTeacher);
+
+// Inventory restocking route
+router.route("/inventory/restock").post(restockMedication);
 
 module.exports = router;
