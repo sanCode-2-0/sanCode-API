@@ -76,7 +76,7 @@ const { getAnalyticsData } = require("../controllers/sanCodeAnalyticsControllers
 const { requestParentOTP, verifyParentOTP, getParentStudentHistory } = require("../controllers/sanCodeParentController.js");
 const { verifyParentToken } = require("../middleware/verifyParentToken.js");
 const { restockMedication } = require("../controllers/sanCodeMedicationController.js");
-const { initiateMockStkPush, verifyMpesaPayment } = require("../controllers/mpesaController.js");
+const { initiateMockStkPush, verifyMpesaPayment, mpesaCallback } = require("../controllers/mpesaController.js");
 const {
   getTeacherPasscode,
   updateTeacherPasscode,
@@ -159,6 +159,7 @@ router.route("/parents/records").get(verifyParentToken, getParentStudentHistory)
 // M-Pesa payments for parents
 router.route("/parents/mpesa-stkpush").post(initiateMockStkPush);
 router.route("/parents/mpesa-verify").post(verifyMpesaPayment);
+router.route("/parents/mpesa-callback").post(mpesaCallback);
 
 // Nurse schedule configuration
 router.route("/nurse/schedule").get(getNurseSchedule).post(addNurseScheduleSlot);
