@@ -33,7 +33,7 @@ function calculateMedicationTiming(lastVisit, scheduleSlots = []) {
 
   const timestampStr = lastVisit.timestamp;
   const medicationText = lastVisit.medication.toLowerCase();
-  const lastDoseTime = moment(timestampStr).tz("Africa/Nairobi");
+  const lastDoseTime = moment.tz(timestampStr, "Africa/Nairobi");
 
   // 1. Determine relative text for last taken
   let lastTakenText = "";

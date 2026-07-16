@@ -335,7 +335,9 @@ const studentFullEntry = async (req, res) => {
           ailment,
           medication,
           going_to_hospital: going_to_hospital_value,
-          timestamp: moment().toISOString(),
+          timestamp: moment()
+            .tz("Africa/Nairobi")
+            .format("YYYY-MM-DD HH:mm:ss"),
         })
         .eq("admNo", studentAdmNo)
         .select();
@@ -419,7 +421,7 @@ const studentQuickUpdate = async (req, res) => {
       complain,
       medication,
       going_to_hospital: going_to_hospital_value,
-      timestamp: moment().toISOString(),
+      timestamp: moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
     })
     .eq("admNo", studentAdmNo)
     .select();
@@ -665,7 +667,7 @@ const staffFullEntry = async (req, res) => {
       complain,
       ailment,
       medication,
-      timestamp: moment().toISOString(),
+      timestamp: moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
     })
     .eq("idNo", idNo)
     .select();
@@ -719,7 +721,7 @@ const staffQuickUpdate = async (req, res) => {
       tempReading,
       complain,
       medication,
-      timestamp: moment().toISOString(),
+      timestamp: moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
     })
     .eq("idNo", idNo)
     .select();
@@ -1804,7 +1806,7 @@ const nonBusherianEntry = async (req, res) => {
         ailment,
         medication,
         going_to_hospital: going_to_hospital_value,
-        timestamp: moment().toISOString(),
+        timestamp: moment().tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss"),
       },
     ]);
 
