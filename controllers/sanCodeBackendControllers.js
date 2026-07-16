@@ -196,16 +196,48 @@ const getStudentByAdmissionNumber = async (req, res) => {
 const getStudentHistory = async (req, res) => {
   const admNo = parseInt(req.params.admNo);
 
-  // Implemented By Functions And Procudures - Really Simple and Efficient Implementation
-  const { data, error } = await supabase.rpc("get_student_history", {
+  const { data: historyData, error: historyError } = await supabase.rpc("get_student_history", {
     student_admno: admNo,
   });
 
-  if (error) {
-    return res.status(500).json({ error: error.message });
+  if (historyError) {
+    return res.status(500).json({ error: historyError.message });
   }
 
-  res.json(data);
+  const { data: currentRecord, error: currentError } = await supabase
+    .from(studentTableName)
+    .select("*")
+    .eq("admNo", admNo);
+
+  if (currentError) {
+    console.error("Error fetching current student record for history:", currentError);
+    return res.json(historyData);
+  }
+
+  if (currentRecord && currentRecord.length > 0) {
+    const current = currentRecord[0];
+    if (current.ailment || current.complain) {
+      const isAlreadyInHistory = (historyData || []).some(h => h.timestamp === current.timestamp);
+      if (!isAlreadyInHistory) {
+        const formattedCurrent = {
+          recordid: current.recordID,
+          admno: current.admNo,
+          fname: current.fName,
+          sname: current.sName,
+          class: current.class,
+          tempreading: current.tempReading,
+          complain: current.complain,
+          ailment: current.ailment,
+          medication: current.medication,
+          timestamp: current.timestamp,
+          going_to_hospital: current.going_to_hospital
+        };
+        (historyData || []).unshift(formattedCurrent);
+      }
+    }
+  }
+
+  res.json(historyData);
 };
 
 // Endpoint to get students going to the hospital
@@ -563,15 +595,47 @@ const getStaffMemberByID = async (req, res) => {
 const getStaffHistory = async (req, res) => {
   let idNo = parseInt(req.params.idNo);
 
-  const { data, error } = await supabase.rpc("get_staff_history", {
+  const { data: historyData, error: historyError } = await supabase.rpc("get_staff_history", {
     staff_idno: idNo,
   });
 
-  if (error) {
-    return res.status(500).json({ error: error.message });
+  if (historyError) {
+    return res.status(500).json({ error: historyError.message });
   }
 
-  res.json(data);
+  const { data: currentRecord, error: currentError } = await supabase
+    .from(staffTableName)
+    .select("*")
+    .eq("idNo", idNo);
+
+  if (currentError) {
+    console.error("Error fetching current staff record for history:", currentError);
+    return res.json(historyData);
+  }
+
+  if (currentRecord && currentRecord.length > 0) {
+    const current = currentRecord[0];
+    if (current.ailment || current.complain) {
+      const isAlreadyInHistory = (historyData || []).some(h => h.timestamp === current.timestamp);
+      if (!isAlreadyInHistory) {
+        const formattedCurrent = {
+          recordid: current.recordID || current.id,
+          idno: current.idNo,
+          fname: current.fName,
+          sname: current.sName,
+          tempreading: current.tempReading,
+          complain: current.complain,
+          ailment: current.ailment,
+          medication: current.medication,
+          timestamp: current.timestamp,
+          going_to_hospital: current.going_to_hospital
+        };
+        (historyData || []).unshift(formattedCurrent);
+      }
+    }
+  }
+
+  res.json(historyData);
 };
 
 //Endpoint to create a record for a staff member
