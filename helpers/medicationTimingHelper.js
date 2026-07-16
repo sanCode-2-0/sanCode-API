@@ -10,9 +10,21 @@ const moment = require("moment-timezone");
  * @returns {Object} { lastTakenText, nextDueText, status, medications }
  */
 function calculateMedicationTiming(lastVisit, scheduleSlots = []) {
-  if (!lastVisit || !lastVisit.medication || lastVisit.medication === "null" || lastVisit.medication.trim() === "") {
+  const NairobiTime = moment().tz("Africa/Nairobi");
+
+  const medicationTextClean = lastVisit?.medication ? lastVisit.medication.trim().toLowerCase() : "";
+  if (
+    !lastVisit ||
+    !lastVisit.medication ||
+    lastVisit.medication === "null" ||
+    medicationTextClean === "" ||
+    medicationTextClean === "none" ||
+    medicationTextClean === "nil" ||
+    medicationTextClean === "n/a" ||
+    medicationTextClean === "no medication"
+  ) {
     return {
-      lastTakenText: "No visits logged with medication.",
+      lastTakenText: "No active medication.",
       nextDueText: "No active schedule.",
       status: "NONE",
       medications: []
@@ -21,8 +33,6 @@ function calculateMedicationTiming(lastVisit, scheduleSlots = []) {
 
   const timestampStr = lastVisit.timestamp;
   const medicationText = lastVisit.medication.toLowerCase();
-  
-  const NairobiTime = moment().tz("Africa/Nairobi");
   const lastDoseTime = moment(timestampStr).tz("Africa/Nairobi");
 
   // 1. Determine relative text for last taken
@@ -35,20 +45,20 @@ function calculateMedicationTiming(lastVisit, scheduleSlots = []) {
     lastTakenText = `${lastDoseTime.format("MMM Do")} at ${lastDoseTime.format("h:mm A")}`;
   }
 
-  // 2. Parse frequency
+  // 2. Parse frequency using word-boundary regular expressions
   let frequency = "tds"; // Default fallback
-  if (medicationText.includes("stat") || medicationText.includes("start")) {
+  if (/\b(stat|start|once)\b/.test(medicationText)) {
     frequency = "stat";
-  } else if (medicationText.includes("prn") || medicationText.includes("as needed")) {
+  } else if (/\b(prn|as\s+needed)\b/.test(medicationText)) {
     frequency = "prn";
-  } else if (medicationText.includes("qid") || medicationText.includes("qds")) {
+  } else if (/\b(qid|qds|4\s*x|four\s+times|4\s+times)\b/.test(medicationText)) {
     frequency = "qid";
-  } else if (medicationText.includes("bd")) {
-    frequency = "bd";
-  } else if (medicationText.includes("od")) {
-    frequency = "od";
-  } else if (medicationText.includes("tds")) {
+  } else if (/\b(tds|3\s*x|three\s+times|3\s+times)\b/.test(medicationText)) {
     frequency = "tds";
+  } else if (/\b(bd|2\s*x|twice|two\s+times|2\s+times)\b/.test(medicationText)) {
+    frequency = "bd";
+  } else if (/\b(od|1\s*x|daily|once\s+daily|1\s+time)\b/.test(medicationText)) {
+    frequency = "od";
   }
 
   // Parse list of medicines for clean mapping
@@ -91,28 +101,30 @@ function calculateMedicationTiming(lastVisit, scheduleSlots = []) {
   }
 
   // 4. Generate absolute moments for slots from the day of the last dose to tomorrow
-  const dateRangeMoments = [];
-  const startDay = lastDoseTime.clone().startOf("day");
+  // Cap startDay to be at most 5 days ago to prevent performance issues with very old visits
+  const fiveDaysAgo = NairobiTime.clone().subtract(5, "days").startOf("day");
+  const startDay = lastDoseTime.isBefore(fiveDaysAgo) ? fiveDaysAgo : lastDoseTime.clone().startOf("day");
   const endDay = NairobiTime.clone().add(1, "day").endOf("day");
 
+  const dateRangeMoments = [];
   let currentDayIter = startDay.clone();
   while (currentDayIter.isBefore(endDay)) {
     const daySlots = getSlotsForDay(currentDayIter);
     daySlots.forEach(slot => {
-      const [sh, sm, ss] = slot.start_time.split(":");
-      const [eh, em, es] = slot.end_time.split(":");
+      const [sh, sm, ss] = (slot.start_time || "00:00:00").split(":");
+      const [eh, em, es] = (slot.end_time || "00:00:00").split(":");
 
       const start = currentDayIter.clone().set({
-        hour: parseInt(sh),
-        minute: parseInt(sm),
-        second: parseInt(ss || 0),
+        hour: parseInt(sh) || 0,
+        minute: parseInt(sm) || 0,
+        second: parseInt(ss) || 0,
         millisecond: 0
       });
 
       const end = currentDayIter.clone().set({
-        hour: parseInt(eh),
-        minute: parseInt(em),
-        second: parseInt(es || 0),
+        hour: parseInt(eh) || 0,
+        minute: parseInt(em) || 0,
+        second: parseInt(es) || 0,
         millisecond: 0
       });
 
@@ -129,7 +141,6 @@ function calculateMedicationTiming(lastVisit, scheduleSlots = []) {
   dateRangeMoments.sort((a, b) => a.start.valueOf() - b.start.valueOf());
 
   // 5. Select active slots per day matching the prescribed frequency
-  // Group sorted slots by date string to apply frequency mapping rules per day
   const groupedByDate = {};
   dateRangeMoments.forEach(slot => {
     const dateKey = slot.start.format("YYYY-MM-DD");
@@ -142,10 +153,8 @@ function calculateMedicationTiming(lastVisit, scheduleSlots = []) {
     const slots = groupedByDate[dateKey].sort((a, b) => a.start.valueOf() - b.start.valueOf());
     
     if (frequency === "od") {
-      // Once Daily -> First slot of the day
       if (slots[0]) mappedSlots.push(slots[0]);
     } else if (frequency === "bd") {
-      // Twice Daily -> First and third slot of the day (or first and last if less than 3)
       if (slots.length === 1) {
         mappedSlots.push(slots[0]);
       } else if (slots.length === 2) {
@@ -154,31 +163,26 @@ function calculateMedicationTiming(lastVisit, scheduleSlots = []) {
         mappedSlots.push(slots[0], slots[2] || slots[slots.length - 1]);
       }
     } else if (frequency === "tds") {
-      // Three times daily -> First, second, and third slot
       mappedSlots.push(...slots.slice(0, 3));
     } else if (frequency === "qid") {
-      // Four times daily -> First four slots
       mappedSlots.push(...slots.slice(0, 4));
     } else {
       mappedSlots.push(...slots);
     }
   });
 
-  // Re-sort mapped slots chronologically
   mappedSlots.sort((a, b) => a.start.valueOf() - b.start.valueOf());
 
   // 6. Find which mapped slot matches or is closest to the lastTakenTime
   let lastTakenIndex = -1;
   for (let i = mappedSlots.length - 1; i >= 0; i--) {
     const slot = mappedSlots[i];
-    // If lastDoseTime is close to this slot (e.g. from 1 hour before start to 2 hours after end)
     if (lastDoseTime.isBetween(slot.start.clone().subtract(1, "hour"), slot.end.clone().add(2, "hours"), null, "[]")) {
       lastTakenIndex = i;
       break;
     }
   }
 
-  // Fallback: If no exact matching interval was found, locate the closest slot in the past relative to lastDoseTime
   if (lastTakenIndex === -1) {
     for (let i = mappedSlots.length - 1; i >= 0; i--) {
       if (lastDoseTime.isAfter(mappedSlots[i].start)) {
@@ -190,11 +194,21 @@ function calculateMedicationTiming(lastVisit, scheduleSlots = []) {
 
   // 7. Find next due slot
   let nextDueSlot = null;
-  if (lastTakenIndex !== -1 && lastTakenIndex + 1 < mappedSlots.length) {
-    nextDueSlot = mappedSlots[lastTakenIndex + 1];
+  const potentialSlots = lastTakenIndex !== -1 ? mappedSlots.slice(lastTakenIndex + 1) : mappedSlots;
+
+  if (potentialSlots.length > 0) {
+    const lastStartedSlot = [...potentialSlots].reverse().find(slot => {
+      const dueWindowStart = slot.start.clone().subtract(30, "minutes");
+      return NairobiTime.isAfter(dueWindowStart);
+    });
+
+    if (lastStartedSlot) {
+      nextDueSlot = lastStartedSlot;
+    } else {
+      nextDueSlot = potentialSlots[0];
+    }
   } else {
-    // Fallback: Find the first mapped slot that ends in the future relative to the current time
-    nextDueSlot = mappedSlots.find(slot => slot.end.isAfter(NairobiTime)) || mappedSlots[mappedSlots.length - 1];
+    nextDueSlot = mappedSlots[mappedSlots.length - 1];
   }
 
   // 8. Determine compliance status and timing label
@@ -205,24 +219,26 @@ function calculateMedicationTiming(lastVisit, scheduleSlots = []) {
     const graceTime = nextDueSlot.end.clone().add(30, "minutes");
     const dueWindowStart = nextDueSlot.start.clone().subtract(30, "minutes");
 
+    // Format the relative day label
+    let dayLabel = "";
+    if (nextDueSlot.start.isSame(NairobiTime, "day")) {
+      dayLabel = "today";
+    } else if (nextDueSlot.start.isSame(NairobiTime.clone().subtract(1, "day"), "day")) {
+      dayLabel = "yesterday";
+    } else if (nextDueSlot.start.isSame(NairobiTime.clone().add(1, "day"), "day")) {
+      dayLabel = "tomorrow";
+    } else {
+      dayLabel = nextDueSlot.start.format("dddd");
+    }
+
     if (NairobiTime.isAfter(graceTime)) {
       status = "OVERDUE";
-      nextDueText = `Overdue for ${nextDueSlot.name} (scheduled ${nextDueSlot.start.format("h:mm A")}).`;
-    } else if (NairobiTime.isBetween(dueWindowStart, nextDueSlot.end, null, "[]")) {
+      nextDueText = `Overdue for ${nextDueSlot.name} (scheduled ${dayLabel} at ${nextDueSlot.start.format("h:mm A")}).`;
+    } else if (NairobiTime.isBetween(dueWindowStart, graceTime, null, "[]")) {
       status = "DUE";
       nextDueText = `Due Now (${nextDueSlot.name} slot is open).`;
     } else {
       status = "TAKEN";
-      
-      // Format the relative day label
-      let dayLabel = "";
-      if (nextDueSlot.start.isSame(NairobiTime, "day")) {
-        dayLabel = "today";
-      } else if (nextDueSlot.start.isSame(NairobiTime.clone().add(1, "day"), "day")) {
-        dayLabel = "tomorrow";
-      } else {
-        dayLabel = nextDueSlot.start.format("dddd");
-      }
       nextDueText = `Next due ${dayLabel} at ${nextDueSlot.start.format("h:mm A")} (${nextDueSlot.name}).`;
     }
   }
@@ -234,6 +250,7 @@ function calculateMedicationTiming(lastVisit, scheduleSlots = []) {
     medications
   };
 }
+
 
 module.exports = {
   calculateMedicationTiming
