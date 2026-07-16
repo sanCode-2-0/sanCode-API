@@ -1,5 +1,5 @@
 const { supabase } = require("../config/supabase/config.js");
-const { reportTableName } = require("../config/database.js");
+const { reportTableName, studentTableName, staffTableName } = require("../config/database.js");
 const moment = require("moment-timezone");
 
 // Simple in-memory cache for monthly trend aggregates (2-minute TTL)
@@ -15,18 +15,37 @@ const getAnalyticsData = async (req, res) => {
     const todayCutoff = NairobiTime.clone().startOf("day").format("YYYY-MM-DD HH:mm:ss");
     const monthStart = NairobiTime.clone().startOf("month").format("YYYY-MM-DD HH:mm:ss");
     
-    // Fetch student history records since recentCutoff (optimizing columns selected!)
-    const { data: recentVisits, error: recentError } = await supabase
-      .from("sanCodeStudent_history")
-      .select("admNo, fName, sName, class, timestamp, ailment, medication")
-      .gte("timestamp", recentCutoff)
-      .neq("ailment", "")
-      .order("timestamp", { ascending: false });
+    // Fetch both student history and current student records since recentCutoff
+    const [historyResult, currentResult] = await Promise.all([
+      supabase
+        .from("sanCodeStudent_history")
+        .select("admNo, fName, sName, class, timestamp, ailment, medication")
+        .gte("timestamp", recentCutoff)
+        .neq("ailment", ""),
+      supabase
+        .from(studentTableName)
+        .select("admNo, fName, sName, class, timestamp, ailment, medication")
+        .gte("timestamp", recentCutoff)
+        .neq("ailment", "")
+    ]);
 
-    if (recentError) {
-      console.error("Error fetching recent visits:", recentError);
+    if (historyResult.error || currentResult.error) {
+      console.error("Error fetching recent visits:", historyResult.error || currentResult.error);
       return res.status(500).json({ error: "Error fetching recent stats" });
     }
+
+    // Combine and deduplicate
+    const allVisits = [...(historyResult.data || []), ...(currentResult.data || [])];
+    const seen = new Set();
+    const recentVisits = [];
+    for (const v of allVisits) {
+      const key = `${v.admNo}_${v.timestamp}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        recentVisits.push(v);
+      }
+    }
+    recentVisits.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     // Filter today's records
     const todayVisits = recentVisits.filter(r => r.timestamp >= todayCutoff);
@@ -102,27 +121,69 @@ const getAnalyticsData = async (req, res) => {
       computed = monthlyCache.computed;
       reportData = monthlyCache.reportData;
     } else {
-      // Fetch all student and staff history since start of month (selecting ONLY needed columns!)
-      const [studentHistoryResult, staffHistoryResult] = await Promise.all([
+      // Fetch all student and staff history and current records since start of month
+      const [studentHistoryResult, studentCurrentResult, staffHistoryResult, staffCurrentResult] = await Promise.all([
         supabase
           .from("sanCodeStudent_history")
           .select("timestamp, admNo, ailment, class")
           .gte("timestamp", monthStart)
           .neq("ailment", ""),
         supabase
+          .from(studentTableName)
+          .select("timestamp, admNo, ailment, class")
+          .gte("timestamp", monthStart)
+          .neq("ailment", ""),
+        supabase
           .from("sanCodeStaff_history")
-          .select("timestamp, ailment")
+          .select("timestamp, ailment, idNo")
+          .gte("timestamp", monthStart)
+          .neq("ailment", ""),
+        supabase
+          .from(staffTableName)
+          .select("timestamp, ailment, idNo")
           .gte("timestamp", monthStart)
           .neq("ailment", "")
       ]);
 
-      if (studentHistoryResult.error || staffHistoryResult.error) {
-        console.error("Error fetching monthly history:", studentHistoryResult.error || staffHistoryResult.error);
+      if (
+        studentHistoryResult.error ||
+        studentCurrentResult.error ||
+        staffHistoryResult.error ||
+        staffCurrentResult.error
+      ) {
+        console.error(
+          "Error fetching monthly history:",
+          studentHistoryResult.error ||
+            studentCurrentResult.error ||
+            staffHistoryResult.error ||
+            staffCurrentResult.error
+        );
         return res.status(500).json({ error: "Error fetching history data" });
       }
 
-      const studentMonthVisits = studentHistoryResult.data || [];
-      const staffMonthVisits = staffHistoryResult.data || [];
+      // Combine and deduplicate student records
+      const allStudentMonth = [...(studentHistoryResult.data || []), ...(studentCurrentResult.data || [])];
+      const studentSeen = new Set();
+      const studentMonthVisits = [];
+      for (const r of allStudentMonth) {
+        const key = `${r.admNo}_${r.timestamp}`;
+        if (!studentSeen.has(key)) {
+          studentSeen.add(key);
+          studentMonthVisits.push(r);
+        }
+      }
+
+      // Combine and deduplicate staff records
+      const allStaffMonth = [...(staffHistoryResult.data || []), ...(staffCurrentResult.data || [])];
+      const staffSeen = new Set();
+      const staffMonthVisits = [];
+      for (const r of allStaffMonth) {
+        const key = `${r.idNo}_${r.timestamp}`;
+        if (!staffSeen.has(key)) {
+          staffSeen.add(key);
+          staffMonthVisits.push(r);
+        }
+      }
 
       // Peak hours (this month, student visits)
       const peakHoursBuckets = new Array(24).fill(0);
@@ -192,15 +253,35 @@ const getAnalyticsData = async (req, res) => {
       const lastWeekEnd = thisWeekStart;
       const thisWeekRecords = studentMonthVisits.filter(r => r.timestamp >= thisWeekStart);
       
-      // Fetch last week from DB with specific columns
-      const { data: lastWeekDb, error: lastWeekError } = await supabase
-        .from("sanCodeStudent_history")
-        .select("admNo, timestamp")
-        .gte("timestamp", lastWeekStart)
-        .lt("timestamp", lastWeekEnd)
-        .neq("ailment", "");
-      
-      const lastWeekRecords = lastWeekError ? [] : (lastWeekDb || []);
+      // Fetch last week records from both history and current tables
+      const [lastWeekHistResult, lastWeekCurrentResult] = await Promise.all([
+        supabase
+          .from("sanCodeStudent_history")
+          .select("admNo, timestamp")
+          .gte("timestamp", lastWeekStart)
+          .lt("timestamp", lastWeekEnd)
+          .neq("ailment", ""),
+        supabase
+          .from(studentTableName)
+          .select("admNo, timestamp")
+          .gte("timestamp", lastWeekStart)
+          .lt("timestamp", lastWeekEnd)
+          .neq("ailment", "")
+      ]);
+
+      const lastWeekRecords = [];
+      const lastWeekSeen = new Set();
+      const allLastWeek = [
+        ...(lastWeekHistResult.error ? [] : lastWeekHistResult.data || []),
+        ...(lastWeekCurrentResult.error ? [] : lastWeekCurrentResult.data || [])
+      ];
+      for (const r of allLastWeek) {
+        const key = `${r.admNo}_${r.timestamp}`;
+        if (!lastWeekSeen.has(key)) {
+          lastWeekSeen.add(key);
+          lastWeekRecords.push(r);
+        }
+      }
       const weeklyComparison = {
         thisWeek: {
           visits: thisWeekRecords.length,
