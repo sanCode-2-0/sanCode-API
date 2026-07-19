@@ -72,6 +72,7 @@ const {
   updateStudentRecord,
   updateStudentProfile,
 } = require("../controllers/sanCodeBackendControllers.js");
+const { getDailyAttendanceLog } = require("../controllers/dailyAttendanceController.js");
 const { getAnalyticsData } = require("../controllers/sanCodeAnalyticsControllers.js");
 const { requestParentOTP, verifyParentOTP, getParentStudentHistory } = require("../controllers/sanCodeParentController.js");
 const { verifyParentToken } = require("../middleware/verifyParentToken.js");
@@ -141,6 +142,7 @@ router.route("/report").get(getReportData);
 router.route("/report-analytics").get(getReportAnalytics);
 
 router.route("/analytics/data").get(getAnalyticsData);
+router.route("/analytics/daily-attendance-log").get(getDailyAttendanceLog);
 
 router.route("/archived-months").get(getArchivedMonths);
 router.route("/archived-report/:month").get(getArchivedReport);
