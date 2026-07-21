@@ -1229,8 +1229,13 @@ const backfillArchivedReport = async (req, res) => {
     const startStr = targetStart.format("YYYY-MM-DD HH:mm:ss");
     const endStr = targetEnd.format("YYYY-MM-DD HH:mm:ss");
 
-    // Fetch history for that month
-    const [staffHist, studentHist] = await Promise.all([
+    // Fetch from history and active tables for both staff and students for the backfill month
+    const [
+      staffHist,
+      studentHist,
+      staffCurrent,
+      studentCurrent
+    ] = await Promise.all([
       supabase
         .from("sanCodeStaff_history")
         .select("*")
@@ -1243,13 +1248,64 @@ const backfillArchivedReport = async (req, res) => {
         .gte("timestamp", startStr)
         .lte("timestamp", endStr)
         .neq("ailment", ""),
+      supabase
+        .from(staffTableName)
+        .select("*")
+        .gte("timestamp", startStr)
+        .lte("timestamp", endStr)
+        .neq("ailment", ""),
+      supabase
+        .from(studentTableName)
+        .select("*")
+        .gte("timestamp", startStr)
+        .lte("timestamp", endStr)
+        .neq("ailment", ""),
     ]);
 
-    if (staffHist.error || studentHist.error) {
+    if (
+      staffHist.error ||
+      studentHist.error ||
+      staffCurrent.error ||
+      studentCurrent.error
+    ) {
+      const errMsg =
+        staffHist.error?.message ||
+        studentHist.error?.message ||
+        staffCurrent.error?.message ||
+        studentCurrent.error?.message;
+      console.error("Error fetching backfill records:", errMsg);
       return res.status(500).json({ error: "Error fetching history" });
     }
 
-    const rows = [...(studentHist.data || []), ...(staffHist.data || [])];
+    // Combine and deduplicate rows (each unique combination of patient + timestamp is one visit)
+    const seen = new Set();
+    const rows = [];
+
+    // Deduplicate and combine student visits
+    const allStudents = [
+      ...(studentHist.data || []),
+      ...(studentCurrent.data || [])
+    ];
+    for (const r of allStudents) {
+      const key = `student_${r.admNo}_${r.timestamp}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        rows.push(r);
+      }
+    }
+
+    // Deduplicate and combine staff visits
+    const allStaff = [
+      ...(staffHist.data || []),
+      ...(staffCurrent.data || [])
+    ];
+    for (const r of allStaff) {
+      const key = `staff_${r.idNo}_${r.timestamp}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        rows.push(r);
+      }
+    }
 
     // Build disease matrix
     const diseaseMatrix = {};
