@@ -146,7 +146,7 @@ const getParentStudentHistory = async (req, res) => {
       message: "Access to student clinical history requires a fee of KES 50.00."
     });
   }
-
+  try {
     // Fetch student profile details for metadata and latest visit details
     const { data: student, error: studError } = await supabase
       .from("sanCodeStudent")

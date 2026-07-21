@@ -94,7 +94,7 @@ const getAnalyticsData = async (req, res) => {
         }
       });
       Object.values(studentLastVisit).forEach((record) => {
-        const recordTime = moment(record.timestamp).tz("Africa/Nairobi");
+        const recordTime = moment.tz(record.timestamp, "Africa/Nairobi");
         const hour = recordTime.hour();
         if (hour >= 5 && hour < 12 && record.medication) {
           medicationDue.push(record);
@@ -188,7 +188,7 @@ const getAnalyticsData = async (req, res) => {
       // Peak hours (this month, student visits)
       const peakHoursBuckets = new Array(24).fill(0);
       studentMonthVisits.forEach(r => {
-        const hour = moment(r.timestamp).tz("Africa/Nairobi").hour();
+        const hour = moment.tz(r.timestamp, "Africa/Nairobi").hour();
         peakHoursBuckets[hour]++;
       });
       const peakHours = peakHoursBuckets.map((count, hour) => ({ hour, count }));
@@ -229,7 +229,7 @@ const getAnalyticsData = async (req, res) => {
       const monthDays = new Set();
       const monthVisitsByStudent = {};
       studentMonthVisits.forEach(r => {
-        const d = moment(r.timestamp).tz("Africa/Nairobi");
+        const d = moment.tz(r.timestamp, "Africa/Nairobi");
         const dateStr = d.format("YYYY-MM-DD");
         const key = `${r.admNo}_${dateStr}`;
         monthDays.add(key);

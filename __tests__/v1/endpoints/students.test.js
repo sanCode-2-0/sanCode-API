@@ -231,9 +231,9 @@ describe("Test GET /update-report", () => {
 
 describe("Test GET /generate-excel", () => {
   test("Status", async () => {
-    const response = await request(app).get("/generate-excel");
+    const response = await request(app).get("/generate-excel").expect(200);
 
-    console.log(response._body);
+    expect(response.body).not.toHaveProperty("status", "Error");
   });
 });
 

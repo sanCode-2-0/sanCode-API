@@ -85,7 +85,11 @@ const triggerMedicationDeduction = async (medicationText, admNoOrIdNo, isStaff =
     const filterCol = isStaff ? "idNo" : "admNo";
 
     // Wait a brief moment to ensure DB trigger finished inserting into the history table
-    await new Promise(resolve => setTimeout(resolve, 500));
+    if (process.env.NODE_ENV === "test") {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    } else {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
 
     const { data: latestHistory } = await supabase
       .from(table)
@@ -103,6 +107,11 @@ const triggerMedicationDeduction = async (medicationText, admNoOrIdNo, isStaff =
   } catch (err) {
     console.error(`[Deduction Trigger Error] for ${admNoOrIdNo}:`, err.message);
   }
+};
+
+const runBackgroundTasks = async (medication, id, isStaff, email) => {
+  updateReportInternal().catch(err => console.error("Async report update failed:", err));
+  triggerMedicationDeduction(medication, id, isStaff, email).catch(err => console.error(err));
 };
 
 // Return name of the API if requested
@@ -220,12 +229,12 @@ const getStudentHistory = async (req, res) => {
       const isAlreadyInHistory = (historyData || []).some(h => h.timestamp === current.timestamp);
       if (!isAlreadyInHistory) {
         const formattedCurrent = {
-          recordid: current.recordID,
-          admno: current.admNo,
-          fname: current.fName,
-          sname: current.sName,
+          recordID: current.recordID,
+          admNo: current.admNo,
+          fName: current.fName,
+          sName: current.sName,
           class: current.class,
-          tempreading: current.tempReading,
+          tempReading: current.tempReading,
           complain: current.complain,
           ailment: current.ailment,
           medication: current.medication,
@@ -384,8 +393,7 @@ const studentFullEntry = async (req, res) => {
         res.status(404).json({ error: "Student not found" });
         return;
       }
-      updateReportInternal().catch(err => console.error("Async report update failed:", err));
-      triggerMedicationDeduction(medication, studentAdmNo, false, req.user?.email).catch(err => console.error(err));
+      await runBackgroundTasks(medication, studentAdmNo, false, req.user?.email);
       res.json({
         status: 200,
         message: `Record updated for ${studentAdmNo} successfully. ${new Date()
@@ -468,8 +476,7 @@ const studentQuickUpdate = async (req, res) => {
     res.status(404).json({ error: "Student not found" });
     return;
   }
-  updateReportInternal().catch(err => console.error("Async report update failed:", err));
-  triggerMedicationDeduction(medication, studentAdmNo, false, req.user?.email).catch(err => console.error(err));
+  await runBackgroundTasks(medication, studentAdmNo, false, req.user?.email);
   res.json({
     status: 200,
     message: `Record updated for ${studentAdmNo} successfully.`,
@@ -619,11 +626,11 @@ const getStaffHistory = async (req, res) => {
       const isAlreadyInHistory = (historyData || []).some(h => h.timestamp === current.timestamp);
       if (!isAlreadyInHistory) {
         const formattedCurrent = {
-          recordid: current.recordID || current.id,
-          idno: current.idNo,
-          fname: current.fName,
-          sname: current.sName,
-          tempreading: current.tempReading,
+          staffRecordID: current.staffRecordID || current.id,
+          idNo: current.idNo,
+          fName: current.fName,
+          sName: current.sName,
+          tempReading: current.tempReading,
           complain: current.complain,
           ailment: current.ailment,
           medication: current.medication,
@@ -742,8 +749,7 @@ const staffFullEntry = async (req, res) => {
     return;
   }
 
-  updateReportInternal().catch(err => console.error("Async report update failed:", err));
-  triggerMedicationDeduction(medication, idNo, true, req.user?.email).catch(err => console.error(err));
+  await runBackgroundTasks(medication, idNo, true, req.user?.email);
   res.status(200).json({
     message: `Record updated for ${idNo} successfully.`,
   });
@@ -796,8 +802,7 @@ const staffQuickUpdate = async (req, res) => {
     return;
   }
 
-  updateReportInternal().catch(err => console.error("Async report update failed:", err));
-  triggerMedicationDeduction(medication, idNo, true, req.user?.email).catch(err => console.error(err));
+  await runBackgroundTasks(medication, idNo, true, req.user?.email);
   res.status(200).json({
     message: `Record updated for ${idNo} successfully.`,
   });
@@ -988,7 +993,7 @@ async function updateReportInternal() {
   const diseaseMatrix = {};
 
   rows.forEach((record) => {
-    const day = moment(record.timestamp).date();
+    const day = moment.tz(record.timestamp, "Africa/Nairobi").date();
     const ailment = record.ailment;
     if (!ailment) return;
 
@@ -1000,7 +1005,7 @@ async function updateReportInternal() {
   // Group by patient+ailment. First visit in the month = first attendance,
   // subsequent visits by same patient for same ailment = re-attendance.
   const getPatientId = (record) =>
-    record.admNo !== undefined
+    (record.admNo !== undefined && record.admNo !== null)
       ? `student_${record.admNo}`
       : `staff_${record.idNo}`;
 
@@ -1020,7 +1025,7 @@ async function updateReportInternal() {
       (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
     );
     sorted.forEach((record, index) => {
-      const day = moment(record.timestamp).date();
+      const day = moment.tz(record.timestamp, "Africa/Nairobi").date();
       if (index === 0) {
         firstAttByDay[day] = (firstAttByDay[day] || 0) + 1;
       } else {
@@ -1033,7 +1038,7 @@ async function updateReportInternal() {
   const referralsByDay = {};
   rows.forEach((record) => {
     if (record.going_to_hospital === 1) {
-      const day = moment(record.timestamp).date();
+      const day = moment.tz(record.timestamp, "Africa/Nairobi").date();
       referralsByDay[day] = (referralsByDay[day] || 0) + 1;
     }
   });
@@ -1310,7 +1315,7 @@ const backfillArchivedReport = async (req, res) => {
     // Build disease matrix
     const diseaseMatrix = {};
     rows.forEach((record) => {
-      const day = moment(record.timestamp).date();
+      const day = moment.tz(record.timestamp, "Africa/Nairobi").date();
       const ailment = record.ailment;
       if (!ailment) return;
       if (!diseaseMatrix[ailment]) diseaseMatrix[ailment] = {};
@@ -1319,7 +1324,7 @@ const backfillArchivedReport = async (req, res) => {
 
     // First/Re-Attendance
     const getPatientId = (record) =>
-      record.admNo !== undefined ? `student_${record.admNo}` : `staff_${record.idNo}`;
+      (record.admNo !== undefined && record.admNo !== null) ? `student_${record.admNo}` : `staff_${record.idNo}`;
 
     const patientAilmentGroups = {};
     rows.forEach((record) => {
@@ -1334,7 +1339,7 @@ const backfillArchivedReport = async (req, res) => {
     Object.values(patientAilmentGroups).forEach((records) => {
       const sorted = [...records].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
       sorted.forEach((record, index) => {
-        const day = moment(record.timestamp).date();
+        const day = moment.tz(record.timestamp, "Africa/Nairobi").date();
         if (index === 0) firstAttByDay[day] = (firstAttByDay[day] || 0) + 1;
         else reAttByDay[day] = (reAttByDay[day] || 0) + 1;
       });
@@ -1344,7 +1349,7 @@ const backfillArchivedReport = async (req, res) => {
     const referralsByDay = {};
     rows.forEach((record) => {
       if (record.going_to_hospital === 1) {
-        const day = moment(record.timestamp).date();
+        const day = moment.tz(record.timestamp, "Africa/Nairobi").date();
         referralsByDay[day] = (referralsByDay[day] || 0) + 1;
       }
     });
@@ -1490,7 +1495,11 @@ const generateExcel = async (req, res) => {
   const fileName = moment().format("dddd, Do MMMM YYYY").replace(/ /g, "_");
   const workbook = new excelJS.Workbook();
   const worksheet = workbook.addWorksheet(fileName);
-  const path = `${KEYS.HOME}/Desktop/sanCode - Excel - Summaries`;
+  const path = `${KEYS.HOME}/Desktop/sanCode-Excel-Summaries`;
+  const fs = require("fs");
+  if (!fs.existsSync(path)) {
+    fs.mkdirSync(path, { recursive: true });
+  }
 
   // Data Column names ( key should match column name in db )
   worksheet.columns = [
@@ -1985,8 +1994,7 @@ const nonBusherianEntry = async (req, res) => {
       return;
     }
 
-    updateReportInternal().catch(err => console.error("Async report update failed:", err));
-    triggerMedicationDeduction(medication, nonBusherianId, false, req.user?.email).catch(err => console.error(err));
+    await runBackgroundTasks(medication, nonBusherianId, false, req.user?.email);
     res.status(200).json({
       status: 200,
       message: `Record created for ${studentName} from ${schoolName}`,

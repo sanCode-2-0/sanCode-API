@@ -52,7 +52,7 @@ const DOSAGE_REGEX = /\b(bd|od|qid|tds|stat|1\s*od|1\s*bd|1\s*tds|1|2|3|4|5|od,g
 function parseMedications(rawText) {
   if (!rawText) return [];
 
-  const segments = rawText.split(",");
+  const segments = rawText.split(/[,+;\/&]|\band\b/i);
   const normalizedItems = [];
 
   for (let segment of segments) {

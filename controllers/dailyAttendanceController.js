@@ -5,15 +5,15 @@ const moment = require("moment-timezone");
 const getDailyAttendanceLog = async (req, res) => {
   try {
     const monthParam = req.query.month; // e.g. "2026-07-01" or "2026-07"
-    const target = monthParam ? moment(monthParam) : moment();
+    const target = monthParam ? moment.tz(monthParam, "Africa/Nairobi") : moment().tz("Africa/Nairobi");
 
     if (!target.isValid()) {
       return res.status(400).json({ error: "Invalid month format. Use YYYY-MM-DD or YYYY-MM" });
     }
 
     // Set cutoffs for start and end of target month in Nairobi timezone
-    const startOfMonth = target.clone().startOf("month").tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
-    const endOfMonth = target.clone().endOf("month").tz("Africa/Nairobi").format("YYYY-MM-DD HH:mm:ss");
+    const startOfMonth = target.clone().startOf("month").format("YYYY-MM-DD HH:mm:ss");
+    const endOfMonth = target.clone().endOf("month").format("YYYY-MM-DD HH:mm:ss");
 
     // Fetch from history and current tables for both students and staff
     const [studentHistResult, studentCurrentResult, staffHistResult, staffCurrentResult] = await Promise.all([
