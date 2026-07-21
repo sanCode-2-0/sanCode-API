@@ -147,9 +147,17 @@ const getParentStudentHistory = async (req, res) => {
     });
   }
 
-  try {
+    // Fetch student profile details for metadata and latest visit details
+    const { data: student, error: studError } = await supabase
+      .from("sanCodeStudent")
+      .select("fName, sName, class, timestamp, tempReading, complain, ailment, medication, going_to_hospital")
+      .eq("admNo", authorizedAdmNo)
+      .maybeSingle();
+
+    if (studError) throw studError;
+
     // Query history logs for child
-    const { data: history, error: historyError } = await supabase
+    const { data: historyData, error: historyError } = await supabase
       .from("sanCodeStudent_history")
       .select("timestamp, tempReading, complain, ailment, medication, going_to_hospital")
       .eq("admNo", authorizedAdmNo)
@@ -157,17 +165,26 @@ const getParentStudentHistory = async (req, res) => {
 
     if (historyError) throw historyError;
 
-    // Fetch student profile details for metadata
-    const { data: student } = await supabase
-      .from("sanCodeStudent")
-      .select("fName, sName, class")
-      .eq("admNo", authorizedAdmNo)
-      .maybeSingle();
+    // Merge active visit if it is not already in the history list
+    let visits = historyData ? [...historyData] : [];
+    if (student && (student.ailment || student.complain)) {
+      const isAlreadyInHistory = visits.some(h => h.timestamp === student.timestamp);
+      if (!isAlreadyInHistory) {
+        visits.unshift({
+          timestamp: student.timestamp,
+          tempReading: student.tempReading,
+          complain: student.complain,
+          ailment: student.ailment,
+          medication: student.medication,
+          going_to_hospital: student.going_to_hospital
+        });
+      }
+    }
 
     res.status(200).json({
       status: "success",
       studentInfo: student ? { fName: student.fName, sName: student.sName, class: student.class } : null,
-      records: history || []
+      records: visits
     });
 
   } catch (err) {

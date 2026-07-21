@@ -184,7 +184,7 @@ const verifyStudentForTeacher = async (req, res) => {
     }
 
     // 3. Fetch latest visits from history
-    const { data: history, error: histErr } = await supabase
+    const { data: historyData, error: histErr } = await supabase
       .from("sanCodeStudent_history")
       .select("timestamp, ailment, complain, medication, going_to_hospital")
       .eq("admNo", Number(admNo))
@@ -192,6 +192,23 @@ const verifyStudentForTeacher = async (req, res) => {
       .limit(3);
 
     if (histErr) throw histErr;
+
+    // Merge current active visit if not already in history
+    let visits = historyData ? [...historyData] : [];
+    if (student && (student.ailment || student.complain)) {
+      const isAlreadyInHistory = visits.some(h => h.timestamp === student.timestamp);
+      if (!isAlreadyInHistory) {
+        visits.unshift({
+          timestamp: student.timestamp,
+          ailment: student.ailment,
+          complain: student.complain,
+          medication: student.medication,
+          going_to_hospital: student.going_to_hospital
+        });
+      }
+    }
+    // Limit to 3 records
+    visits = visits.slice(0, 3);
 
     // 4. Fetch pending scheduled returns / follow-ups
     const { data: followUps, error: followErr } = await supabase
@@ -213,7 +230,7 @@ const verifyStudentForTeacher = async (req, res) => {
         going_to_hospital: student.going_to_hospital,
         lastStatusTime: student.timestamp
       },
-      latestVisits: history || [],
+      latestVisits: visits,
       scheduledReturns: followUps || []
     });
 

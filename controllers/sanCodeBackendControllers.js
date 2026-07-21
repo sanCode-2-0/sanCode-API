@@ -910,9 +910,13 @@ async function updateReportInternal() {
     .startOf("month")
     .format("YYYY-MM-DD HH:mm:ss");
 
-  // 1. Fetch from HISTORY tables (each row = one visit) for accurate counts
-  // History tables are populated by DB triggers on every update
-  const [staffHistoryResult, studentHistoryResult] = await Promise.all([
+  // 1. Fetch from history and active tables for both staff and students
+  const [
+    staffHistoryResult,
+    studentHistoryResult,
+    staffCurrentResult,
+    studentCurrentResult
+  ] = await Promise.all([
     supabase
       .from("sanCodeStaff_history")
       .select("*")
@@ -923,19 +927,62 @@ async function updateReportInternal() {
       .select("*")
       .gte("timestamp", monthStart)
       .neq("ailment", ""),
+    supabase
+      .from(staffTableName)
+      .select("*")
+      .gte("timestamp", monthStart)
+      .neq("ailment", ""),
+    supabase
+      .from(studentTableName)
+      .select("*")
+      .gte("timestamp", monthStart)
+      .neq("ailment", ""),
   ]);
 
-  if (staffHistoryResult.error || studentHistoryResult.error) {
-    const errMsg = staffHistoryResult.error?.message || studentHistoryResult.error?.message;
+  if (
+    staffHistoryResult.error ||
+    studentHistoryResult.error ||
+    staffCurrentResult.error ||
+    studentCurrentResult.error
+  ) {
+    const errMsg =
+      staffHistoryResult.error?.message ||
+      studentHistoryResult.error?.message ||
+      staffCurrentResult.error?.message ||
+      studentCurrentResult.error?.message;
     console.error("Error fetching records:", errMsg);
     throw new Error(errMsg);
   }
 
-  // Combine all visit records — each row is a single visit
-  const rows = [
+  // Combine and deduplicate rows (each unique combination of patient + timestamp is one visit)
+  const seen = new Set();
+  const rows = [];
+
+  // Deduplicate and combine student visits
+  const allStudents = [
     ...(studentHistoryResult.data || []),
-    ...(staffHistoryResult.data || []),
+    ...(studentCurrentResult.data || [])
   ];
+  for (const r of allStudents) {
+    const key = `student_${r.admNo}_${r.timestamp}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      rows.push(r);
+    }
+  }
+
+  // Deduplicate and combine staff visits
+  const allStaff = [
+    ...(staffHistoryResult.data || []),
+    ...(staffCurrentResult.data || [])
+  ];
+  for (const r of allStaff) {
+    const key = `staff_${r.idNo}_${r.timestamp}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      rows.push(r);
+    }
+  }
 
   // 2. Build disease → { day: count } matrix in memory
   const diseaseMatrix = {};
