@@ -65,7 +65,8 @@ const requestParentOTP = async (req, res) => {
 
     res.status(200).json({
       status: "success",
-      message: "Verification code sent successfully to registered parent contact info."
+      message: "Verification code sent successfully to registered parent contact info.",
+      otp: otpCode
     });
 
   } catch (err) {
