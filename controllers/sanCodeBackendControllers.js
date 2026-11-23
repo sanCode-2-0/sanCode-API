@@ -73,8 +73,9 @@ const { supabase } = require("../config/supabase/config.js");
 const { dev_mode } = require("../dev_mode.js");
 const { parseMedications } = require("../helpers/medicationParser.js");
 const { deductMedicationStock } = require("./sanCodeMedicationController.js");
+const { recordClinicalEncounter } = require("./encounterController.js");
 
-// Helper to parse medication and deduct inventory stock in the background
+// Helper to parse medication and deduct inventory stock transactionally
 const triggerMedicationDeduction = async (medicationText, admNoOrIdNo, isStaff = false, nurseEmail = "clinic-nurse") => {
   if (!medicationText || medicationText.toLowerCase() === "none") return;
   try {
@@ -84,22 +85,16 @@ const triggerMedicationDeduction = async (medicationText, admNoOrIdNo, isStaff =
     const table = isStaff ? "sanCodeStaff_history" : "sanCodeStudent_history";
     const filterCol = isStaff ? "idNo" : "admNo";
 
-    // Wait a brief moment to ensure DB trigger finished inserting into the history table
-    if (process.env.NODE_ENV === "test") {
-      await new Promise(resolve => setTimeout(resolve, 50));
-    } else {
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
+    // Query latest history_id immediately; PostgreSQL trigger executes synchronously within the update
     const { data: latestHistory } = await supabase
       .from(table)
-      .select("recordID")
+      .select("history_id")
       .eq(filterCol, admNoOrIdNo)
-      .order("timestamp", { ascending: false })
+      .order("history_id", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    const historyId = latestHistory ? latestHistory.recordID : null;
+    const historyId = latestHistory ? latestHistory.history_id : null;
 
     for (const item of items) {
       await deductMedicationStock(historyId, item.name, item.quantity, nurseEmail);
@@ -111,7 +106,7 @@ const triggerMedicationDeduction = async (medicationText, admNoOrIdNo, isStaff =
 
 const runBackgroundTasks = async (medication, id, isStaff, email) => {
   updateReportInternal().catch(err => console.error("Async report update failed:", err));
-  triggerMedicationDeduction(medication, id, isStaff, email).catch(err => console.error(err));
+  await triggerMedicationDeduction(medication, id, isStaff, email).catch(err => console.error(err));
 };
 
 // Return name of the API if requested
@@ -394,6 +389,16 @@ const studentFullEntry = async (req, res) => {
         return;
       }
       await runBackgroundTasks(medication, studentAdmNo, false, req.user?.email);
+      recordClinicalEncounter({
+        patientType: "STUDENT",
+        patientId: studentAdmNo,
+        tempReading,
+        complaint: complain,
+        ailment,
+        medication,
+        isReferred: going_to_hospital_value === 1,
+        nurseEmail: req.user?.email || "clinic-nurse"
+      }).catch(err => console.error("Encounter tracking error:", err.message));
       res.json({
         status: 200,
         message: `Record updated for ${studentAdmNo} successfully. ${new Date()
@@ -477,6 +482,15 @@ const studentQuickUpdate = async (req, res) => {
     return;
   }
   await runBackgroundTasks(medication, studentAdmNo, false, req.user?.email);
+  recordClinicalEncounter({
+    patientType: "STUDENT",
+    patientId: studentAdmNo,
+    tempReading,
+    complaint: complain,
+    medication,
+    isReferred: going_to_hospital_value === 1,
+    nurseEmail: req.user?.email || "clinic-nurse"
+  }).catch(err => console.error("Encounter tracking error:", err.message));
   res.json({
     status: 200,
     message: `Record updated for ${studentAdmNo} successfully.`,
@@ -750,6 +764,15 @@ const staffFullEntry = async (req, res) => {
   }
 
   await runBackgroundTasks(medication, idNo, true, req.user?.email);
+  recordClinicalEncounter({
+    patientType: "STAFF",
+    patientId: idNo,
+    tempReading,
+    complaint: complain,
+    ailment,
+    medication,
+    nurseEmail: req.user?.email || "clinic-nurse"
+  }).catch(err => console.error("Encounter tracking error:", err.message));
   res.status(200).json({
     message: `Record updated for ${idNo} successfully.`,
   });
@@ -803,6 +826,15 @@ const staffQuickUpdate = async (req, res) => {
   }
 
   await runBackgroundTasks(medication, idNo, true, req.user?.email);
+  recordClinicalEncounter({
+    patientType: "STAFF",
+    patientId: idNo,
+    tempReading,
+    complaint: complain,
+    ailment: null,
+    medication,
+    nurseEmail: req.user?.email || "clinic-nurse"
+  }).catch(err => console.error("Encounter tracking error:", err.message));
   res.status(200).json({
     message: `Record updated for ${idNo} successfully.`,
   });
@@ -1995,6 +2027,16 @@ const nonBusherianEntry = async (req, res) => {
     }
 
     await runBackgroundTasks(medication, nonBusherianId, false, req.user?.email);
+    recordClinicalEncounter({
+      patientType: "VISITOR",
+      patientId: nonBusherianId,
+      tempReading,
+      complaint: complain,
+      ailment,
+      medication,
+      isReferred: going_to_hospital_value === 1,
+      nurseEmail: req.user?.email || "clinic-nurse"
+    }).catch(err => console.error("Encounter tracking error:", err.message));
     res.status(200).json({
       status: 200,
       message: `Record created for ${studentName} from ${schoolName}`,

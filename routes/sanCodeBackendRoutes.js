@@ -88,6 +88,29 @@ const {
   getStudentFollowUps,
   verifyStudentForTeacher
 } = require("../controllers/sanCodeScheduleController.js");
+const {
+  getAllClassTeachers,
+  getClassDetails,
+  updateClassTeacher,
+  getAllClasses
+} = require("../controllers/classTeacherController.js");
+const {
+  getClassAttendance,
+  saveClassAttendance,
+  getClassAttendanceHistory
+} = require("../controllers/classAttendanceController.js");
+const {
+  createEncounter,
+  updateEncounterStatus,
+  updateReferralStatus,
+  getPatientEncounters,
+  getActiveReferrals
+} = require("../controllers/encounterController.js");
+const {
+  verifyMonitorPasscode,
+  updateMonitorPasscode,
+  getMonitorStats
+} = require("../controllers/sanCodeMonitorController.js");
 
 const router = Router();
 
@@ -177,5 +200,26 @@ router.route("/teachers/verify/:admNo").get(verifyStudentForTeacher);
 
 // Inventory restocking route
 router.route("/inventory/restock").post(restockMedication);
+
+// Classes & Class Teachers
+router.route("/classes").get(getAllClasses);
+router.route("/class-teachers").get(getAllClassTeachers);
+router.route("/class-teachers/:className").get(getClassDetails).put(updateClassTeacher);
+
+// Classroom Attendance Register
+router.route("/class-attendance/:className").get(getClassAttendance).post(saveClassAttendance);
+router.route("/class-attendance/:className/history").get(getClassAttendanceHistory);
+
+// Clinical Encounters & Referral State Machine
+router.route("/encounters").post(createEncounter);
+router.route("/encounters/:id/status").patch(updateEncounterStatus);
+router.route("/encounters/:id/referral").patch(updateReferralStatus);
+router.route("/encounters/patient/:patientType/:patientId").get(getPatientEncounters);
+router.route("/encounters/referrals/active").get(getActiveReferrals);
+
+// System Monitoring Dashboard routes
+router.route("/monitor/verify").post(verifyMonitorPasscode);
+router.route("/monitor/passcode").post(updateMonitorPasscode);
+router.route("/monitor/stats").get(getMonitorStats);
 
 module.exports = router;

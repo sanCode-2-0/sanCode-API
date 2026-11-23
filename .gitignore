@@ -133,3 +133,7 @@ dist
 database/san-code.db
 database/san-code.sqlite
 *.sqlite
+
+# scratch and backup dumps
+scratch/
+scripts/backups/
